@@ -113,14 +113,11 @@ app.post('/api/recommend', async (req,res) => {
     movies = detailed.concat(movies.slice(detailCount));
 
     let ranked = movies.map(m=>({...m,reason:'Fresh live movie matching your selected genres.'}));
-    let aiUsed = false;
-    let aiError = null;
     if(openai && movies.length){
-      try {
-        const aiPool=movies.slice(0,Math.min(120,movies.length));
-        const aiLimit=Math.min(limit,100);
-        const compact=aiPool.map((m,i)=>({index:i,title:m.title,year:m.year,genres:m.genres,rating:m.rating,overview:m.overview}));
-        const prompt=`You are the recommendation engine for a couples movie swiper.
+      const aiPool=movies.slice(0,Math.min(120,movies.length));
+      const aiLimit=Math.min(limit,100);
+      const compact=aiPool.map((m,i)=>({index:i,title:m.title,year:m.year,genres:m.genres,rating:m.rating,overview:m.overview}));
+      const prompt=`You are the recommendation engine for a couples movie swiper.
 Selected genres: ${genres.join(', ')}
 Today: ${now.toISOString().slice(0,10)}
 
@@ -128,36 +125,32 @@ Rank these real TMDB candidates for the selected genres. Favor strong genre fit,
 
 Candidates:
 ${JSON.stringify(compact)}`;
-        const response=await openai.responses.create({model:process.env.OPENAI_MODEL||'gpt-5',input:prompt});
-        let parsed;
-        try { parsed=JSON.parse(response.output_text); } catch {
-          const match=response.output_text.match(/\{[\s\S]*\}/); parsed=match?JSON.parse(match[0]):null;
-        }
-        const items=Array.isArray(parsed?.items)?parsed.items:[];
-        const out=[]; const used=new Set();
-        for(const item of items){
-          const i=Number(item.index); if(!Number.isInteger(i)||!aiPool[i]||used.has(i)) continue;
-          used.add(i); out.push({...aiPool[i],reason:String(item.reason||'Good fit for your selected genres.')});
-        }
-        for(const m of movies){
-          if(out.length>=limit) break;
-          if(!out.some(x=>x.tmdbId===m.tmdbId)) out.push({...m,reason:'A fresh option that fits your selected genres.'});
-        }
-        if(out.length) { ranked=out.slice(0,limit); aiUsed=true; }
-      } catch (e) {
-        aiError=e?.message || 'OpenAI recommendation failed';
-        console.warn('OpenAI ranking failed; returning TMDB movies instead:', aiError);
+      const response=await openai.responses.create({model:process.env.OPENAI_MODEL||'gpt-5',input:prompt});
+      let parsed;
+      try { parsed=JSON.parse(response.output_text); } catch {
+        const match=response.output_text.match(/\{[\s\S]*\}/); parsed=match?JSON.parse(match[0]):null;
       }
-    }
-    ranked=ranked.slice(0,limit);
+      const items=Array.isArray(parsed?.items)?parsed.items:[];
+      const out=[]; const used=new Set();
+      for(const item of items){
+        const i=Number(item.index); if(!Number.isInteger(i)||!aiPool[i]||used.has(i)) continue;
+        used.add(i); out.push({...aiPool[i],reason:String(item.reason||'Good fit for your selected genres.')});
+      }
+      for(const m of movies){
+        if(out.length>=limit) break;
+        if(!out.some(x=>x.tmdbId===m.tmdbId)) out.push({...m,reason:'A fresh option that fits your selected genres.'});
+      }
+      ranked=out.slice(0,limit);
+    } else ranked=ranked.slice(0,limit);
 
     const nextPage=pageStart+pageCount;
-    res.json({movies:ranked,source:aiUsed?'TMDB + OpenAI':'TMDB',aiUsed,aiError,candidateCount:movies.length,nextPage,hasMore:nextPage<=maxTotalPages});
+    res.json({movies:ranked,source:'TMDB + OpenAI',candidateCount:movies.length,nextPage,hasMore:nextPage<=maxTotalPages});
   } catch(err) {
     console.error(err);
     res.status(500).json({error:err.message || 'Could not load live recommendations.'});
   }
 });
-app.get('/api/health', (req,res)=>res.json({ok:true,tmdb:!!TMDB_TOKEN,ai:!!openai}));
+app.get('/api/health', (req,res)=>res.json({ok:true,tmdb:!!TMDB_TOKEN,ai:!!openai,supabase:!!(SUPABASE_URL&&SUPABASE_ANON_KEY)}));
+app.get('/api/config', (req,res)=>res.json({supabaseUrl:SUPABASE_URL,supabaseAnonKey:SUPABASE_ANON_KEY}));
 app.get(/.*/, (req,res)=>res.sendFile(path.join(__dirname,'index.html')));
 app.listen(PORT,()=>console.log(`Two Tickets running at http://localhost:${PORT}`));
