@@ -262,7 +262,6 @@ kbd{font:600 12px/1 var(--display);padding:4px 7px;border-radius:6px;background:
 <div id="fx" aria-hidden="true"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -585,7 +584,7 @@ async function loadLiveRecommendations(genres,{pageStart=1,limit=120,pageCount=5
     posterPath:m.posterPath||'',tmdbId:m.tmdbId,aiReason:m.reason||'',live:true
   }));
   MOVIES.push(...fresh);
-  return {ids:fresh.map(m=>m.id),movies:fresh,nextPage:Number(data.nextPage)||pageStart+pageCount,hasMore:data.hasMore!==false};
+  return {ids:fresh.map(m=>m.id),movies:fresh,nextPage:Number(data.nextPage)||pageStart+pageCount,hasMore:data.hasMore!==false,source:data.source,aiUsed:data.aiUsed,aiError:data.aiError,candidateCount:data.candidateCount};
 }
 
 async function loadMoreLiveMovies(force=false){
@@ -603,15 +602,15 @@ async function loadMoreLiveMovies(force=false){
       if(S.mode==='online'){
         const rev=Date.now();S.rev=rev;S.lastRevMine=rev;
         const code=S.room,deck=S.deck,movies=S.liveMovies;
-        enqueue(()=>S.db.from('rooms').update({genres:S.genres,deck,movies,rev}).eq('code',code));
+        enqueue(()=>S.db.doc(`rooms/${code}`).set({genres:S.genres,deck,movies,rev}));
       }else saveLocal();
-      toast(`Loaded ${batch.ids.length} more movies`);
+      toast(`Loaded ${batch.ids.length} live movies${batch.aiUsed?' · AI ranked':''}`);
     }else{
       S.liveExhausted=true;
     }
   }catch(e){
     console.warn(e);
-    if(!S.liveMovies.length)S.error='Could not load more live movies right now.';
+    S.error=e.message||'Could not load more live movies right now.';
   }finally{S.loadingMore=false;render()}
 }
 
@@ -691,37 +690,34 @@ function vote(v){
 }
 
 /* =====================================================================
-   ONLINE ROOMS (Supabase Realtime)
+   ONLINE ROOMS (db capability)
    ===================================================================== */
 let writeChain=Promise.resolve();
 function enqueue(fn){writeChain=writeChain.then(fn).catch(dbError);return writeChain}
 function dbError(e){
-  console.error('Room error:',e);
+  const code=e&&e.code;
   S.working=false;
-  S.error=e?.message||'Could not reach the online room. Check your Supabase setup.';
-  toast('Room connection failed');
+  if(code==='invalid_argument'||code==='not_granted')S.error='This account can open the page but can\u2019t save to it, so two-device rooms won\u2019t work here. Use Same screen instead, or ask the owner to share the page with edit access.';
+  else if(code==='quota_exceeded')S.error='This page\u2019s storage is full, so a new room can\u2019t be created.';
+  else S.error='Couldn\u2019t reach the room. Check your connection and try again.';
+  toast(S.error.length>90?'Couldn\u2019t reach the room':S.error);
   render();
 }
 const CODE_CHARS='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 function genCode(){let c='';for(let i=0;i<4;i++)c+=CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)];return c}
 function pushVotes(){
   const code=S.room,me=S.me;
-  if(!S.db||!code)return;
-  const payload={code,slot:me,votes:Object.assign({},S.votes[me]),name:S.names[me]};
-  enqueue(()=>S.db.from('votes').upsert(payload,{onConflict:'code,slot'}));
+  const payload={votes:Object.assign({},S.votes[me]),name:S.names[me]};
+  enqueue(()=>S.db.doc(`rooms/${code}/votes/${me}`).set(payload));
 }
-function detach(){S.unsubs.forEach(u=>{try{u.unsubscribe?u.unsubscribe():u()}catch(e){}});S.unsubs=[]}
+function detach(){S.unsubs.forEach(u=>{try{u()}catch(e){}});S.unsubs=[]}
 function attachRoom(){
   detach();
-  if(!S.db||!S.room)return;
-  S.hydrated=false;S.joinedAt=Date.now();S.present={};
-  const code=S.room;
-  const channel=S.db.channel(`two-tickets-${code}`)
-    .on('postgres_changes',{event:'*',schema:'public',table:'rooms',filter:`code=eq.${code}`},payload=>onRoom({data:payload.new}))
-    .on('postgres_changes',{event:'*',schema:'public',table:'votes',filter:`code=eq.${code}`},payload=>onVoteRow(payload.new))
-    .on('postgres_changes',{event:'*',schema:'public',table:'picks',filter:`code=eq.${code}`},payload=>onPick({data:payload.new,exists:!!payload.new}))
-    .subscribe(status=>{ if(status==='CHANNEL_ERROR') dbError(new Error('Supabase Realtime channel failed. Enable Realtime for rooms, votes and picks.')); });
-  S.unsubs.push(channel);
+  const db=S.db,code=S.room;S.hydrated=false;S.joinedAt=Date.now();S.present={};
+  const bad=e=>dbError(e);
+  S.unsubs.push(db.doc(`rooms/${code}`).onSnapshot(onRoom,bad));
+  S.unsubs.push(db.collection(`rooms/${code}/votes`).onSnapshot(onVotes,bad));
+  S.unsubs.push(db.doc(`rooms/${code}/meta/pick`).onSnapshot(onPick,bad));
 }
 function mergeLiveMovies(list){
   if(!Array.isArray(list))return new Map();
@@ -729,85 +725,95 @@ function mergeLiveMovies(list){
   for(const raw of list){
     if(!raw||raw.tmdbId==null)continue;
     let existing=MOVIES.find(m=>String(m.tmdbId)===String(raw.tmdbId));
-    if(!existing){const id=MOVIES.length;existing={...raw,id,live:true};MOVIES.push(existing)}
-    map.set(String(raw.id),existing.id);map.set(String(raw.tmdbId),existing.id);
+    if(!existing){
+      const id=MOVIES.length;
+      existing={...raw,id,live:true};
+      MOVIES.push(existing);
+    }
+    map.set(String(raw.id),existing.id);
+    map.set(String(raw.tmdbId),existing.id);
   }
   return map;
 }
-function onRoom(payload){
-  const d=payload?.data||{}; if(!d.code||d.code!==S.room)return;
-  const genres=d.genres||[];const idMap=mergeLiveMovies(d.movies||[]);
+
+function onRoom(snap){
+  if(!snap.exists)return;
+  const d=snap.data()||{};const genres=d.genres||[];
+  const idMap=mergeLiveMovies(d.movies||[]);
   S.deck=(d.deck||[]).map(id=>idMap.get(String(id))??id);
-  S.liveMovies=d.movies||[];S.genres=genres;S.rev=d.rev;
+  S.liveMovies=d.movies||[];S.genres=genres;
+  if(S.rev!==undefined&&d.rev!==S.rev&&d.rev!==S.lastRevMine&&S.screen==='swipe'&&genres.length)toast('Genres changed to '+genreList(genres));
+  S.rev=d.rev;
   if(S.screen==='genres'&&!S.editingGenres&&genres.length)S.screen='swipe';
   render();
 }
-function onVoteRow(d){
-  if(!d||d.code!==S.room)return;
-  const prev=curId();const slot=d.slot;
-  if(slot!=='p1'&&slot!=='p2')return;
-  S.votes[slot]=slot===S.me?Object.assign({},d.votes||{},S.votes[slot]):Object.assign({},d.votes||{});
-  if(d.name)S.names[slot]=d.name;S.present[slot]=true;
+function onVotes(snap){
+  const prev=curId();
+  snap.docs.forEach(doc=>{
+    const slot=doc.id;if(slot!=='p1'&&slot!=='p2')return;
+    const d=doc.data()||{};const theirs=d.votes||{};
+    S.votes[slot]=slot===S.me?Object.assign({},theirs,S.votes[slot]):Object.assign({},theirs);
+    if(d.name)S.names[slot]=d.name;
+    S.present[slot]=true;
+  });
   const first=!S.hydrated;S.hydrated=true;
   const me=S.me,o=other(me);
-  if(!first&&prev!==null&&S.votes[me][prev]===1&&S.votes[o][prev]===0&&MOVIES[prev])toast(`${S.names[o]} passed on ${MOVIES[prev].title}`);
-  scanMatches(first);render();
+  if(!first&&prev!==null&&S.votes[me][prev]===1&&S.votes[o][prev]===0)toast(`${S.names[o]} passed on ${MOVIES[prev].title}`);
+  scanMatches(first);
+  render();
 }
-async function syncVotes(){
-  if(!S.db||!S.room)return;
-  const {data,error}=await S.db.from('votes').select('*').eq('code',S.room);
-  if(error)throw error;
-  (data||[]).forEach(onVoteRow);
-}
-async function syncRoom(){
-  if(!S.db||!S.room)return;
-  const {data,error}=await S.db.from('rooms').select('*').eq('code',S.room).maybeSingle();
-  if(error)throw error;if(data)onRoom({data});
-}
-function onPick(payload){
-  const d=payload?.data||{};if(!d||d.code!==S.room||!d.id)return;
+function onPick(snap){
+  if(!snap.exists)return;
+  const d=snap.data()||{};
   if(d.ts>S.lastPick&&d.by!==S.me&&d.ts>S.joinedAt-4000&&MOVIES[d.id]){S.lastPick=d.ts;runPick(d.id)}
 }
 async function createRoom(){
   if(!S.db||S.working)return;
-  const name=(S.form.name||'').trim()||'Player 1';S.working=true;S.error='';render();
+  const name=(S.form.name||'').trim()||'Player 1';
+  S.working=true;S.error='';render();
   try{
-    let code=null;
-    for(let tries=0;tries<12;tries++){
-      const candidate=genCode();
-      const {data,error}=await S.db.from('rooms').select('code').eq('code',candidate).maybeSingle();
-      if(error)throw error;if(!data){code=candidate;break}
-    }
-    if(!code)throw new Error('Could not generate a free room code.');
+    let code,tries=0,free=false;
+    while(tries++<8){code=genCode();const s=await S.db.doc(`rooms/${code}`).get();if(!s.exists){free=true;break}}
+    if(!free)throw {code:'unavailable'};
     const rev=Date.now();
-    const {error:re}=await S.db.from('rooms').insert({code,genres:[],deck:[],movies:[],rev,created:rev});if(re)throw re;
-    const {error:ve}=await S.db.from('votes').upsert({code,slot:'p1',votes:{},name},{onConflict:'code,slot'});if(ve)throw ve;
-    freshSession('online');S.me='p1';S.room=code;S.names={p1:name,p2:'Player 2'};S.rev=rev;S.lastRevMine=rev;LS.set('tt:room',{code,slot:'p1',name});S.working=false;S.screen='genres';attachRoom();await syncRoom();await syncVotes();render();
+    await S.db.doc(`rooms/${code}`).set({genres:[],deck:[],rev,created:rev});
+    await S.db.doc(`rooms/${code}/votes/p1`).set({votes:{},name:name});
+    freshSession('online');S.me='p1';S.room=code;S.names={p1:name,p2:'Player 2'};S.rev=rev;S.lastRevMine=rev;
+    LS.set('tt:room',{code,slot:'p1',name});
+    S.working=false;S.screen='genres';attachRoom();render();
   }catch(e){dbError(e)}
 }
 async function joinRoom(){
   if(!S.db||S.working)return;
-  const code=(S.form.code||'').trim().toUpperCase(),name=(S.form.name||'').trim()||'Player 2';
+  const code=(S.form.code||'').trim().toUpperCase();
+  const name=(S.form.name||'').trim()||'Player 2';
   if(code.length!==4){S.error='Enter the 4-character room code.';render();return}
   S.working=true;S.error='';render();
   try{
-    const {data:room,error:re}=await S.db.from('rooms').select('*').eq('code',code).maybeSingle();if(re)throw re;
-    if(!room){S.working=false;S.error='No room with that code. Check it and try again.';render();return}
-    const {data:mineRows,error:ve}=await S.db.from('votes').select('*').eq('code',code).eq('slot','p2');if(ve)throw ve;
-    const saved=LS.get('tt:room'),mineOk=saved&&saved.code===code&&saved.slot==='p2';
-    if(mineRows?.length&&!mineOk){S.working=false;S.error='That room already has two players.';render();return}
-    const votes=mineRows?.[0]?.votes||{};
-    const {error:up}=await S.db.from('votes').upsert({code,slot:'p2',votes,name},{onConflict:'code,slot'});if(up)throw up;
-    freshSession('online');S.me='p2';S.room=code;S.names={p1:'Player 1',p2:name};S.votes.p2=Object.assign({},votes);LS.set('tt:room',{code,slot:'p2',name});S.rev=room.rev;S.working=false;S.screen=(room.genres||[]).length?'swipe':'genres';attachRoom();await syncRoom();await syncVotes();render();
+    const room=await S.db.doc(`rooms/${code}`).get();
+    if(!room.exists){S.working=false;S.error='No room with that code. Check it and try again.';render();return}
+    const mine=await S.db.doc(`rooms/${code}/votes/p2`).get();
+    const saved=LS.get('tt:room');
+    const mineOk=saved&&saved.code===code&&saved.slot==='p2';
+    if(mine.exists&&!mineOk){S.working=false;S.error='That room already has two players.';render();return}
+    const votes=mine.exists?((mine.data()||{}).votes||{}):{};
+    await S.db.doc(`rooms/${code}/votes/p2`).set({votes,name});
+    freshSession('online');S.me='p2';S.room=code;S.names={p1:'Player 1',p2:name};S.votes.p2=Object.assign({},votes);
+    LS.set('tt:room',{code,slot:'p2',name});
+    const d=room.data()||{};S.rev=d.rev;
+    S.working=false;S.screen=(d.genres||[]).length?'swipe':'genres';attachRoom();render();
   }catch(e){dbError(e)}
 }
 async function rejoinRoom(){
   const saved=LS.get('tt:room');if(!saved||!S.db||S.working)return;
   S.working=true;S.error='';render();
   try{
-    const {data:room,error}=await S.db.from('rooms').select('*').eq('code',saved.code).maybeSingle();if(error)throw error;
-    if(!room){LS.del('tt:room');S.working=false;S.error='That room no longer exists.';render();return}
-    freshSession('online');S.me=saved.slot;S.room=saved.code;S.names[saved.slot]=saved.name||S.names[saved.slot];S.rev=room.rev;S.working=false;S.screen=(room.genres||[]).length?'swipe':'genres';attachRoom();await syncRoom();await syncVotes();render();
+    const room=await S.db.doc(`rooms/${saved.code}`).get();
+    if(!room.exists){LS.del('tt:room');S.working=false;S.error='That room no longer exists.';render();return}
+    freshSession('online');S.me=saved.slot;S.room=saved.code;
+    S.names[saved.slot]=saved.name||S.names[saved.slot];
+    const d=room.data()||{};S.rev=d.rev;
+    S.working=false;S.screen=(d.genres||[]).length?'swipe':'genres';attachRoom();render();
   }catch(e){dbError(e)}
 }
 
@@ -817,7 +823,7 @@ function startPick(){
   const final=ms[Math.floor(Math.random()*ms.length)];
   if(S.mode==='online'){
     const ts=Date.now(),room=S.room,by=S.me;S.lastPick=ts;
-    enqueue(()=>S.db.from('picks').upsert({code:room,id:final,ts,by},{onConflict:'code'}));
+    enqueue(()=>S.db.doc(`rooms/${room}/meta/pick`).set({id:final,ts,by}));
   }
   runPick(final);
 }
@@ -864,10 +870,11 @@ async function startGenres(){
     S.deck=first.ids;
     if(!S.deck.length)throw new Error('No live movies matched those genres. Try another combination.');
     S.liveMovies=first.movies;
+    if(first.aiError) console.warn('AI ranking unavailable; using TMDB results:', first.aiError);
     if(S.mode==='online'){
       const rev=Date.now();S.rev=rev;S.lastRevMine=rev;
       const code=S.room,deck=S.deck,movies=S.liveMovies;
-      enqueue(()=>S.db.from('rooms').update({genres,deck,movies,rev}).eq('code',code));
+      enqueue(()=>S.db.doc(`rooms/${code}`).set({genres,deck,movies,rev}));
     }else saveLocal();
   }catch(e){
     console.error(e);
@@ -926,7 +933,7 @@ function viewSetup(){
     const dis=(!S.dbReady||!S.db||S.working)?'disabled':'';
     let msg='';
     if(!S.dbReady)msg='<p class="note">Checking whether rooms are available\u2026</p>';
-    else if(!S.db)msg='<p class="note">Online rooms need Supabase configuration. Add SUPABASE_URL and SUPABASE_ANON_KEY.</p>';
+    else if(!S.db)msg='<p class="note">Rooms need a signed-in viewer with edit access to this page. You can still use Same screen.</p>';
     body=`${resume}<p class="lead">Each of you uses your own device. One creates a room, the other joins with its code.</p>
       <div class="field"><i style="background:var(--match)"></i><input id="yname" maxlength="18" placeholder="Your name" aria-label="Your name" value="${esc(f.name)}" autocomplete="off"></div>
       <button class="btn primary big wide" data-act="create" ${dis}>${S.working?'Working\u2026':'Create a room'}</button>
@@ -986,8 +993,14 @@ function viewSwipe(){
   const id=curId();
   if(id===null){
     const n=orderedMatches().length;
+    // When the current deck is exhausted, actively start the next live batch.
+    // The previous version could render the loading state without triggering the request.
+    if(!S.loadingMore && !S.liveExhausted && S.genres.length && !S.working){
+      setTimeout(()=>loadMoreLiveMovies(true),0);
+      return `<main class="stage"><div></div><section class="center"><div class="done"><div class="spin"></div><h2>Finding more movies…</h2><p>Loading the next live batch for you.</p></div></section><div></div></main>`;
+    }
     if(S.loadingMore){return `<main class="stage"><div></div><section class="center"><div class="done"><div class="spin"></div><h2>Finding more movies…</h2><p>Loading the next live batch for you.</p></div></section><div></div></main>`}
-    return `<main class="stage" style="--turn:var(--${S.mode==='online'?S.me:'p1'})"><div class="side p1" style="visibility:hidden"></div><section class="center"><div class="done"><h2>${S.liveExhausted?'That’s every movie in these genres.':'Loading more movies…'}</h2><p>${S.liveExhausted?(n?`You found ${n} match${n===1?'':'es'}.`:'No matches yet – try a different mix of genres.'):'More live movies will be loaded automatically.'}</p><div class="row"><button class="btn primary big" data-act="change-genres">Change genres</button>${n?'<button class="btn big" data-act="matches">See your matches</button>':''}</div></div></section><div class="side p2" style="visibility:hidden"></div></main>`;
+    return `<main class="stage" style="--turn:var(--${S.mode==='online'?S.me:'p1'})"><div class="side p1" style="visibility:hidden"></div><section class="center"><div class="done"><h2>${S.liveExhausted?'That’s every movie in these genres.':'Couldn’t load the next batch.'}</h2><p>${S.liveExhausted?(n?`You found ${n} match${n===1?'':'es'}.`:'No matches yet – try a different mix of genres.'):(S.error||'Check the server terminal for the live API error.')}</p><div class="row"><button class="btn primary big" data-act="change-genres">Change genres</button>${n?'<button class="btn big" data-act="matches">See your matches</button>':''}</div></div></section><div class="side p2" style="visibility:hidden"></div></main>`;
   }
   const m=MOVIES[id];
   const isNew=id!==S._lastCur;const wasNull=S._lastCur===undefined;S._lastCur=id;
@@ -1150,13 +1163,7 @@ document.addEventListener('keydown',e=>{
 /* ---------- boot ---------- */
 render();
 (async()=>{
-  try{
-    const cfg=await fetch('/api/config').then(r=>r.json());
-    if(cfg.supabaseUrl&&cfg.supabaseAnonKey&&window.supabase){
-      const {createClient}=window.supabase;
-      S.db=createClient(cfg.supabaseUrl,cfg.supabaseAnonKey);
-    } else S.db=null;
-  }catch(e){console.error(e);S.db=null}
+  try{if(window.claude&&typeof claude.use==='function')S.db=await claude.use('db')}catch(e){S.db=null}
   S.dbReady=true;
   if(S.screen==='setup')render();
 })();
