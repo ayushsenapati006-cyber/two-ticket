@@ -1,0 +1,1172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Two Tickets – find a movie you both want to watch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0f16; --bg-glow:#17233a; --surface:#141c29; --surface2:#1b2535; --line:#2a3650;
+  --text:#eef1f7; --soft:#c5cde0; --muted:#93a0bb; --faint:#5d6a86;
+  --p1:#ff8a4c; --p2:#3fd0c9; --match:#ffd36b;
+  --turn:var(--p1);
+  --display:'Bricolage Grotesque','Helvetica Neue',Arial,sans-serif;
+  --serif:'Newsreader',Georgia,'Times New Roman',serif;
+  color-scheme:dark;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
+body{
+  font-family:var(--display);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased;
+  background:radial-gradient(1100px 560px at 50% -12%,var(--bg-glow) 0%,transparent 62%),var(--bg);
+  background-attachment:fixed;
+}
+button{font:inherit;color:inherit}
+kbd{font:600 12px/1 var(--display);padding:4px 7px;border-radius:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:var(--soft)}
+:focus-visible{outline:2px solid var(--match);outline-offset:3px}
+#app{min-height:100vh;display:flex;flex-direction:column}
+
+/* ---------- header ---------- */
+.top{display:flex;align-items:center;gap:18px;padding:18px 32px;min-height:72px}
+.brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:21px;letter-spacing:-.02em;font-stretch:88%;background:none;border:0;padding:0;cursor:default}
+.brand svg{width:40px;height:23px;display:block}
+.top .grow{flex:1}
+.gsum{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.03);font-size:14px;font-weight:600;color:var(--soft)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;border-radius:999px;border:1px solid var(--line);background:var(--surface);padding:10px 18px;cursor:pointer;transition:transform .15s,background .15s,border-color .15s}
+.btn:hover{background:var(--surface2);border-color:#40517a}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--match);border-color:var(--match);color:#1d1600}
+.btn.primary:hover{background:#ffe08f}
+.btn.ghost{background:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--text)}
+.btn.big{padding:15px 26px;font-size:17px}
+.btn[disabled]{opacity:.38;cursor:not-allowed;pointer-events:none}
+.badge{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--match);color:#1d1600;font-size:13px;font-weight:800}
+.pill{display:inline-flex;align-items:center;gap:9px;padding:8px 14px;border-radius:999px;border:1px dashed #475a85;background:transparent;cursor:pointer;color:var(--soft);font-weight:500}
+.pill b{letter-spacing:.14em;color:var(--text)}
+.pill .dot{width:9px;height:9px;border-radius:50%;background:var(--faint)}
+.pill .dot.on{background:var(--p2);box-shadow:0 0 10px var(--p2)}
+
+/* ---------- setup ---------- */
+.setup{flex:1;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(340px,470px);gap:72px;align-items:center;width:100%;max-width:1180px;margin:0 auto;padding:24px 40px 72px}
+.hero .bigmark{width:210px;height:auto;display:block;overflow:visible}
+.bigmark .a,.bigmark .b{transform-box:fill-box;transform-origin:center;animation:pop .85s cubic-bezier(.2,.9,.3,1.15) both}
+.bigmark .b{animation-delay:.14s}
+.bigmark .lens{animation:glow 1s .75s ease-out both}
+@keyframes pop{from{opacity:0;transform:scale(.55)}to{opacity:1;transform:none}}
+@keyframes glow{from{opacity:0}to{opacity:1}}
+.hero h1{font-size:clamp(46px,5.6vw,80px);line-height:.96;letter-spacing:-.035em;font-weight:800;font-stretch:80%;margin:30px 0 20px;max-width:11ch}
+.hero p{font-family:var(--serif);font-size:22px;line-height:1.5;color:var(--soft);max-width:34ch;margin:0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:26px;padding:26px;box-shadow:0 40px 90px -30px rgba(0,0,0,.8)}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--bg);border:1px solid var(--line);border-radius:15px;padding:4px;margin-bottom:22px}
+.seg button{border:0;background:transparent;color:var(--muted);padding:11px 8px;border-radius:11px;font-weight:600;cursor:pointer;transition:background .15s,color .15s}
+.seg button.on{background:var(--surface2);color:var(--text)}
+.panel .lead{margin:0 0 18px;color:var(--muted);font-size:15px}
+.field{display:flex;align-items:center;gap:12px;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:3px 16px;margin-bottom:12px;transition:border-color .15s}
+.field:focus-within{border-color:var(--match)}
+.field i{flex:none;width:12px;height:12px;border-radius:50%}
+.field input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--text);font:inherit;font-size:17px;padding:13px 0}
+.field input::placeholder{color:var(--faint)}
+.field input.code{letter-spacing:.32em;text-transform:uppercase;font-weight:700}
+.panel .btn.wide{width:100%;margin-top:6px}
+.or{display:flex;align-items:center;gap:14px;color:var(--faint);font-size:14px;margin:20px 0 16px}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.joinrow{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start}
+.joinrow .field{margin:0}
+.note{margin:14px 0 0;font-size:14px;color:var(--muted)}
+.err{margin:14px 0 0;font-size:14px;color:#ff9d8c}
+.resume{display:flex;align-items:center;justify-content:space-between;gap:14px;border:1px solid var(--line);background:rgba(255,211,107,.06);border-radius:16px;padding:14px 16px;margin-bottom:20px}
+.resume p{margin:0;font-size:15px}
+.resume small{display:block;color:var(--muted);font-size:13px}
+.resume .acts{display:flex;gap:8px;flex:none}
+.resume .btn{padding:8px 14px;font-size:14px}
+
+/* ---------- genres ---------- */
+.genres{flex:1;width:100%;max-width:1180px;margin:0 auto;padding:12px 40px 0}
+.genres h2{font-size:clamp(34px,3.6vw,48px);letter-spacing:-.03em;font-stretch:85%;font-weight:800;margin:6px 0 8px}
+.genres .sub{margin:0 0 26px;font-family:var(--serif);font-size:20px;color:var(--soft)}
+.roombar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:14px 18px;border:1px solid var(--line);border-radius:16px;background:var(--surface);margin:0 0 22px}
+.roombar .code{font-size:30px;font-weight:800;letter-spacing:.2em;color:var(--match);cursor:pointer;background:none;border:0;padding:0}
+.roombar .who{display:flex;gap:18px;color:var(--muted);font-size:15px;margin-left:auto}
+.roombar .who span{display:inline-flex;align-items:center;gap:8px}
+.roombar .who i{width:10px;height:10px;border-radius:50%;background:var(--faint)}
+.roombar .who .ok i{background:var(--c);box-shadow:0 0 10px var(--c)}
+.roombar .who .ok{color:var(--text)}
+.ggrid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.gtile{position:relative;aspect-ratio:3/2;border-radius:20px;overflow:hidden;border:1px solid var(--line);padding:0;background:var(--surface);cursor:pointer;text-align:left;transition:transform .2s,border-color .2s,box-shadow .2s}
+.gtile svg{position:absolute;inset:0;width:100%;height:100%;display:block;transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+.gtile:hover svg{transform:scale(1.06)}
+.gtile::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 38%,rgba(0,0,0,.78))}
+.gtile .lbl{position:absolute;left:16px;right:16px;bottom:13px;z-index:2;display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.gtile .lbl b{font-size:25px;font-weight:800;letter-spacing:-.02em;font-stretch:88%}
+.gtile .lbl small{font-size:13px;color:var(--soft)}
+.gtile .tick{position:absolute;top:12px;right:12px;z-index:2;width:30px;height:30px;border-radius:50%;background:var(--match);color:#1d1600;display:grid;place-items:center;font-weight:800;opacity:0;transform:scale(.4);transition:opacity .18s,transform .22s cubic-bezier(.3,1.5,.5,1)}
+.gtile.on{border-color:var(--match);box-shadow:0 0 0 2px var(--match),0 18px 50px -18px rgba(255,211,107,.45);transform:translateY(-3px)}
+.gtile.on .tick{opacity:1;transform:none}
+.gfoot{position:sticky;bottom:0;margin:30px -40px 0;padding:18px 40px calc(18px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:14px;background:linear-gradient(180deg,rgba(10,15,22,0),rgba(10,15,22,.92) 30%);backdrop-filter:blur(8px)}
+.gfoot .count{font-size:17px;color:var(--soft)}
+.gfoot .count b{color:var(--text)}
+.gfoot .grow{flex:1}
+
+/* ---------- swipe stage ---------- */
+.stage{flex:1;display:grid;grid-template-columns:minmax(170px,240px) minmax(0,780px) minmax(170px,240px);gap:24px;justify-content:center;align-items:start;padding:6px 32px 48px}
+.side{--c:var(--p1);padding:22px 20px;border-radius:24px;border:1px solid var(--line);background:linear-gradient(180deg,color-mix(in srgb,var(--c) 11%,var(--surface)),var(--surface));transition:border-color .25s,box-shadow .25s;position:sticky;top:12px}
+.side.p2{--c:var(--p2)}
+.side.active{border-color:var(--c);box-shadow:0 0 0 1px var(--c),0 0 46px -10px color-mix(in srgb,var(--c) 60%,transparent)}
+.avatar{width:54px;height:54px;border-radius:50%;background:var(--c);color:#0d121a;display:grid;place-items:center;font-size:24px;font-weight:800;margin-bottom:14px}
+.side .nm{font-size:21px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:8px;word-break:break-word}
+.side .you{font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:color-mix(in srgb,var(--c) 22%,transparent);color:var(--c)}
+.status{display:flex;align-items:center;gap:9px;margin-top:10px;font-size:15px;color:var(--muted)}
+.status i{width:9px;height:9px;border-radius:50%;background:var(--faint);flex:none}
+.status.live{color:var(--text)}
+.status.live i{background:var(--c);animation:beat 1.4s ease-in-out infinite}
+.status.done i{background:var(--c)}
+@keyframes beat{50%{transform:scale(1.7);opacity:.45}}
+.side .liked{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
+.side .liked b{color:var(--text);font-size:20px;margin-right:6px}
+.keys{display:flex;align-items:center;gap:7px;margin-top:16px;font-size:14px;color:var(--muted);flex-wrap:wrap}
+
+.center{min-width:0}
+.playarea{position:relative}
+.cardwrap{position:relative}
+.cardwrap::before,.cardwrap::after{content:"";position:absolute;inset:0;border-radius:28px;background:var(--surface2);border:1px solid var(--line);z-index:0}
+.cardwrap::before{transform:translateY(14px) scale(.955);opacity:.55}
+.cardwrap::after{transform:translateY(7px) scale(.978);opacity:.85}
+.card{position:relative;z-index:1;display:grid;grid-template-columns:minmax(210px,37%) 1fr;min-height:440px;background:var(--surface);border:1px solid var(--line);border-radius:28px;overflow:hidden;box-shadow:0 36px 90px -26px rgba(0,0,0,.85)}
+.card.enter{animation:enter .42s cubic-bezier(.2,.8,.2,1) both}
+.card.fade{animation:fadein .35s ease both}
+.card.out-left{transition:transform .28s cubic-bezier(.5,0,.9,.4),opacity .28s ease-in;transform:translateX(-125%) rotate(-9deg);opacity:0}
+.card.out-right{transition:transform .28s cubic-bezier(.5,0,.9,.4),opacity .28s ease-in;transform:translateX(125%) rotate(9deg);opacity:0}
+.card.pulse{animation:pulse .4s ease}
+@keyframes enter{from{opacity:0;transform:translateY(22px) scale(.965)}to{opacity:1;transform:none}}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+@keyframes pulse{40%{box-shadow:0 0 0 3px var(--turn),0 0 60px -6px var(--turn);transform:translateX(10px)}}
+.poster{position:relative;background:#000;min-height:100%}
+.poster svg,.art{position:absolute;inset:0;width:100%;height:100%;display:block}
+.info{display:flex;flex-direction:column;gap:18px;padding:34px 38px 34px;min-width:0}
+.cg{display:flex;flex-wrap:wrap;gap:8px}
+.cg .chip{border-color:#3b4a6d;color:var(--soft)}
+.title{margin:0;font-size:44px;line-height:1.02;letter-spacing:-.03em;font-weight:800;font-stretch:85%}
+.title.long{font-size:34px}
+.facts{display:flex;flex-wrap:wrap;gap:10px}
+.fact{padding:8px 14px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-weight:600;font-size:16px}
+.fact.rate{color:var(--match);border-color:rgba(255,211,107,.35);background:rgba(255,211,107,.07)}
+.fact.rate small{color:var(--muted);font-weight:500;margin-left:2px}
+.desc{margin:0;font-family:var(--serif);font-size:20px;line-height:1.55;color:var(--soft);max-width:44ch}
+
+.controls{position:relative;z-index:2;display:flex;gap:18px;justify-content:center;margin-top:38px}
+.vote{flex:1;max-width:310px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:16px 20px 14px;border-radius:22px;border:1.5px solid var(--line);background:var(--surface);cursor:pointer;transition:transform .15s,background .2s,border-color .2s,box-shadow .2s}
+.vote .big{font-size:23px;font-weight:800;letter-spacing:-.01em}
+.vote .big span{font-size:27px;margin-right:6px;vertical-align:-2px}
+.vote .sub{font-size:14px;color:var(--muted)}
+.vote kbd{margin-top:6px}
+.vote.skip:hover{border-color:#7a88a8;background:var(--surface2)}
+.vote.like{border-color:color-mix(in srgb,var(--turn) 65%,var(--line));background:color-mix(in srgb,var(--turn) 15%,var(--surface))}
+.vote.like:hover{background:color-mix(in srgb,var(--turn) 27%,var(--surface));box-shadow:0 14px 44px -16px var(--turn)}
+.vote:active{transform:scale(.97)}
+.vote[disabled]{opacity:.35;cursor:not-allowed;pointer-events:none}
+.left{text-align:center;margin:20px 0 0;color:var(--muted);font-size:15px}
+.waiting{text-align:center;margin:26px 0 -18px;color:var(--soft);font-size:16px;min-height:24px}
+.waiting::after{content:"";display:inline-block;width:1.2em;text-align:left;animation:dots 1.4s steps(4,end) infinite;overflow:hidden;vertical-align:bottom}
+@keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
+.cover{position:absolute;inset:-10px;z-index:5;border-radius:34px;display:grid;place-items:center;text-align:center;background:rgba(10,15,22,.74);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);border:2px solid var(--p2);animation:fadein .3s ease both}
+.cover .avatar{width:84px;height:84px;font-size:38px;margin:0 auto 18px;background:var(--p2)}
+.cover h2{margin:0 0 8px;font-size:46px;font-weight:800;letter-spacing:-.03em;font-stretch:85%}
+.cover p{margin:0 0 22px;color:var(--soft);font-size:17px}
+.done{text-align:center;padding:70px 30px;border:1px solid var(--line);border-radius:28px;background:var(--surface)}
+.done h2{font-size:40px;letter-spacing:-.03em;font-stretch:85%;margin:0 0 10px}
+.done p{font-family:var(--serif);font-size:20px;color:var(--soft);margin:0 0 28px}
+.done .row{display:flex;gap:12px;justify-content:center}
+
+/* ---------- matches ---------- */
+.matches{flex:1;width:100%;max-width:1180px;margin:0 auto;padding:12px 40px 56px}
+.mhead{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:30px}
+.mhead h2{margin:0;font-size:clamp(34px,3.6vw,48px);letter-spacing:-.03em;font-stretch:85%;font-weight:800}
+.mhead p{margin:6px 0 0;font-family:var(--serif);font-size:20px;color:var(--soft)}
+.mhead .acts{display:flex;gap:10px}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:26px}
+.mcard{display:flex;flex-direction:column;gap:12px}
+.mcard .mp{position:relative;aspect-ratio:2/3;border-radius:18px;overflow:hidden;border:1px solid var(--line);box-shadow:0 20px 50px -22px rgba(0,0,0,.9);transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+.mcard:hover .mp{transform:translateY(-6px) rotate(-.6deg)}
+.mcard h3{margin:0;font-size:18px;line-height:1.2;font-weight:700;letter-spacing:-.01em}
+.mcard .mm{display:flex;gap:12px;color:var(--muted);font-size:14px}
+.mcard .mm .r{color:var(--match);font-weight:600}
+.empty{text-align:center;border:1px dashed #3a4a6d;border-radius:28px;padding:80px 30px}
+.empty h3{margin:0 0 8px;font-size:30px;letter-spacing:-.02em;font-stretch:85%}
+.empty p{margin:0 0 26px;font-family:var(--serif);font-size:20px;color:var(--soft)}
+
+/* ---------- overlays ---------- */
+.overlay{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:24px;background:rgba(6,9,14,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);overflow:auto}
+.overlay.anim{animation:fadein .25s ease both}
+.overlay.anim .obox{animation:rise .55s cubic-bezier(.2,.9,.3,1.1) both}
+@keyframes rise{from{opacity:0;transform:translateY(30px) scale(.94)}to{opacity:1;transform:none}}
+.obox{text-align:center;max-width:560px}
+.match h1{margin:0 0 20px;font-size:clamp(64px,9vw,112px);line-height:.92;font-weight:800;letter-spacing:-.04em;font-stretch:78%;background:linear-gradient(100deg,var(--p1) 5%,var(--match) 50%,var(--p2) 95%);-webkit-background-clip:text;background-clip:text;color:transparent;padding:0 .08em .06em}
+.opos{position:relative;width:170px;aspect-ratio:2/3;margin:0 auto 22px;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.2);box-shadow:0 30px 70px -20px rgba(0,0,0,.9),0 0 80px -10px rgba(255,211,107,.35);transform:rotate(-3deg)}
+.obox h2{margin:0 0 6px;font-size:34px;line-height:1.05;letter-spacing:-.03em;font-stretch:85%;font-weight:800}
+.obox .meta{margin:0 0 6px;color:var(--soft);font-size:17px}
+.obox .say{margin:0 0 28px;font-family:var(--serif);font-size:20px;color:var(--muted)}
+.obox .row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.pickbox .opos{width:200px;transform:none}
+.pickbox .tag{display:inline-block;margin-bottom:16px;padding:6px 14px;border-radius:999px;background:rgba(255,211,107,.12);border:1px solid rgba(255,211,107,.4);color:var(--match);font-weight:600;font-size:15px}
+#fx{position:fixed;inset:0;z-index:60;pointer-events:none;overflow:hidden}
+#fx i{position:absolute;top:-28px;border-radius:2px;animation:fall linear forwards}
+@keyframes fall{to{transform:translate(var(--dx),112vh) rotate(var(--rot))}}
+#toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);z-index:70;padding:12px 20px;border-radius:14px;background:#222d42;border:1px solid #3b4a6d;color:var(--text);font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;max-width:min(90vw,520px);text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- live AI ---------- */
+.livebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 22px;padding:12px 16px;border:1px solid rgba(63,208,201,.28);border-radius:15px;background:rgba(63,208,201,.06);color:var(--soft);font-size:14px}
+.livebar .live-dot{width:9px;height:9px;border-radius:50%;background:var(--p2);box-shadow:0 0 12px var(--p2)}
+.ai-note{display:inline-flex;align-items:center;gap:7px;color:var(--p2);font-size:13px;font-weight:700}
+.ai-reason{margin:-8px 0 0;padding:12px 14px;border-left:2px solid var(--p2);background:rgba(63,208,201,.06);border-radius:0 10px 10px 0;color:var(--soft);font-size:14px;line-height:1.45}
+.live-loading{display:grid;place-items:center;min-height:440px;text-align:center;padding:50px}
+.live-loading .spin{width:42px;height:42px;border:3px solid var(--line);border-top-color:var(--match);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 18px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---------- responsive ---------- */
+@media (max-width:1100px){
+  .setup{grid-template-columns:1fr;gap:40px;padding:12px 28px 56px}
+  .hero h1{max-width:14ch}
+  .stage{grid-template-columns:1fr 1fr;grid-template-areas:"a b" "c c";padding:6px 24px 40px}
+  .stage .side.p1{grid-area:a}.stage .side.p2{grid-area:b}.stage .center{grid-area:c}
+  .side{position:static}
+  .ggrid{grid-template-columns:repeat(3,1fr)}
+  .top{padding:14px 22px;flex-wrap:wrap}
+}
+@media (max-width:760px){
+  .card{grid-template-columns:1fr}
+  .poster{height:300px;min-height:0}
+  .info{padding:24px}
+  .title{font-size:34px}
+  .ggrid{grid-template-columns:repeat(2,1fr)}
+  .genres,.matches{padding-left:20px;padding-right:20px}
+  .gfoot{margin-left:-20px;margin-right:-20px;padding-left:20px;padding-right:20px}
+  .controls{gap:12px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="fx" aria-hidden="true"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   DATA – ratings and runtimes are approximate
+   ===================================================================== */
+const GENRES=['Action','Adventure','Animation','Comedy','Crime','Drama','Fantasy','Horror','Mystery','Romance','Sci-Fi','Thriller'];
+const RAW=[
+['Mad Max: Fury Road',2015,'Action/Adventure/Sci-Fi',8.1,120,'Furiosa and Max tear across a burning wasteland in one long, roaring escape from a warlord.'],
+['John Wick',2014,'Action/Thriller/Crime',7.4,101,'A retired hitman returns to his old life after thugs take the last thing his late wife left him.'],
+['Die Hard',1988,'Action/Thriller',8.2,132,'One off-duty cop, one skyscraper, and a crew of thieves who picked the wrong Christmas party.'],
+['The Dark Knight',2008,'Action/Crime/Drama',9.0,152,'Batman, Gordon and Harvey Dent try to hold Gotham together while the Joker works to tear it apart.'],
+['Mission: Impossible – Fallout',2018,'Action/Thriller/Adventure',7.7,147,'Ethan Hunt races to stop a nuclear plot after a mission goes wrong, with stunts that feel dangerously real.'],
+['Gladiator',2000,'Action/Adventure/Drama',8.5,155,'A betrayed Roman general is sold into slavery and fights his way to the Colosseum for revenge.'],
+['Top Gun: Maverick',2022,'Action/Drama',8.2,130,'Decades on, Maverick trains a new class of elite pilots for a mission that looks impossible.'],
+['Baby Driver',2017,'Action/Crime',7.6,113,'A young getaway driver who lives by the beat in his earbuds tries to leave the crime business.'],
+['Edge of Tomorrow',2014,'Sci-Fi/Action',7.9,113,'A soldier relives the same brutal day against alien invaders until he learns how to win.'],
+['RRR',2022,'Action/Drama',7.8,187,'Two very different revolutionaries in 1920s India form a bond that fuels an epic rebellion.'],
+['Kill Bill: Vol. 1',2003,'Action/Crime',8.2,111,'A bride left for dead sets out on a stylish, bloody list of revenge.'],
+['Raiders of the Lost Ark',1981,'Adventure/Action',8.4,115,'Indiana Jones races the Nazis across the globe to find the Ark of the Covenant.'],
+['Casino Royale',2006,'Action/Thriller/Adventure',8.0,144,'A rougher, newly minted Bond takes on a terrorist banker in a high-stakes poker game.'],
+['Terminator 2: Judgment Day',1991,'Sci-Fi/Action',8.6,137,'A reprogrammed machine protects a boy from a shape-shifting killer sent from the future.'],
+['The Raid',2011,'Action/Thriller',7.6,101,'A SWAT team gets trapped in a tower block run by a crime lord and has to fight floor by floor.'],
+['The Lord of the Rings: The Fellowship of the Ring',2001,'Fantasy/Adventure',8.9,178,'A hobbit and eight companions set out to destroy a ring that could end the world.'],
+['Jurassic Park',1993,'Adventure/Sci-Fi',8.2,127,'A theme park full of cloned dinosaurs turns deadly when the power goes out.'],
+['Pirates of the Caribbean: The Curse of the Black Pearl',2003,'Adventure/Fantasy/Action',8.1,143,'A blacksmith and a rum-soaked pirate chase a cursed crew to rescue a governor\u2019s daughter.'],
+['Life of Pi',2012,'Adventure/Drama/Fantasy',7.9,127,'A boy survives a shipwreck on a lifeboat that he shares with a Bengal tiger.'],
+['The Princess Bride',1987,'Adventure/Fantasy/Comedy',8.0,98,'A farmhand, a swordsman and a giant try to rescue a princess in a fairy tale that keeps winking.'],
+['Dune',2021,'Sci-Fi/Adventure',8.0,155,'A young heir is pulled into a war over a desert planet and the spice that powers an empire.'],
+['The Goonies',1985,'Adventure/Comedy',7.7,114,'A group of kids follow a pirate map to save their neighborhood from developers.'],
+['Dungeons & Dragons: Honor Among Thieves',2023,'Adventure/Fantasy/Comedy',7.2,134,'A thief, a bard and their misfit crew chase a lost relic and stumble into a bigger plot.'],
+['The Mummy',1999,'Adventure/Fantasy/Action',7.1,124,'A librarian and an adventurer awaken an ancient priest while hunting for treasure in Egypt.'],
+['The Secret Life of Walter Mitty',2013,'Adventure/Comedy/Drama',7.3,114,'A lifelong daydreamer finally leaves his desk to chase a missing photo negative around the world.'],
+['Spider-Man: Into the Spider-Verse',2018,'Animation/Action/Adventure',8.4,117,'Miles Morales meets Spider-people from across the multiverse and learns what the mask means.'],
+['Spirited Away',2001,'Animation/Fantasy/Adventure',8.6,125,'A girl wanders into a spirit world and has to work in a bathhouse to save her parents.'],
+['Toy Story',1995,'Animation/Comedy/Adventure',8.3,81,'A cowboy doll\u2019s world is upended when a flashy space ranger toy arrives.'],
+['Inside Out',2015,'Animation/Comedy/Drama',8.1,95,'The emotions inside a girl\u2019s head struggle to cope when her family moves across the country.'],
+['Coco',2017,'Animation/Fantasy/Adventure',8.4,105,'A boy who dreams of music enters the Land of the Dead to uncover his family\u2019s secret.'],
+['WALL\u00B7E',2008,'Animation/Sci-Fi/Romance',8.4,98,'A lonely trash-compacting robot follows a sleek probe into space and changes humanity\u2019s course.'],
+['The Lion King',1994,'Animation/Drama/Adventure',8.5,88,'A lion cub flees after his father\u2019s death and must return to claim his place.'],
+['Finding Nemo',2003,'Animation/Adventure/Comedy',8.2,100,'An anxious clownfish crosses the ocean with a forgetful friend to find his son.'],
+['Your Name',2016,'Animation/Romance/Fantasy',8.4,106,'Two teenagers who swap bodies in their sleep try to find each other in waking life.'],
+['How to Train Your Dragon',2010,'Animation/Fantasy/Adventure',8.1,98,'A Viking teen befriends a wounded dragon and challenges everything his village believes.'],
+['Ratatouille',2007,'Animation/Comedy',8.1,111,'A rat with a gift for cooking teams up with a clumsy kitchen worker in a Paris restaurant.'],
+['Howl\u2019s Moving Castle',2004,'Animation/Fantasy/Romance',8.2,119,'A young woman cursed to look old takes refuge in a wizard\u2019s walking castle.'],
+['The Incredibles',2004,'Animation/Action/Adventure',8.0,115,'A retired superhero family is pulled back into action to stop a vengeful fan.'],
+['Princess Mononoke',1997,'Animation/Fantasy/Adventure',8.3,134,'A cursed prince is caught between an iron-mining town and the forest spirits fighting it.'],
+['Shrek',2001,'Animation/Comedy/Fantasy',7.9,90,'A grumpy ogre agrees to rescue a princess so he can get his swamp back.'],
+['Superbad',2007,'Comedy',7.6,113,'Two best friends try to score booze for a party before graduation pulls them apart.'],
+['Bridesmaids',2011,'Comedy/Romance',6.8,125,'A maid of honor\u2019s life unravels as she competes with a rival for the bride\u2019s attention.'],
+['The Grand Budapest Hotel',2014,'Comedy/Crime/Adventure',8.1,99,'A legendary concierge and his lobby boy get tangled up in a stolen painting and a family fortune.'],
+['Groundhog Day',1993,'Comedy/Romance/Fantasy',8.0,101,'A cynical weatherman gets stuck reliving the same day in a small town.'],
+['Airplane!',1980,'Comedy',7.7,87,'A nervous ex-pilot has to land a plane after the crew gets sick, with a gag every few seconds.'],
+['Hunt for the Wilderpeople',2016,'Comedy/Adventure/Drama',7.8,101,'A city kid and his gruff foster uncle go on the run through the New Zealand bush.'],
+['Game Night',2018,'Comedy/Mystery/Crime',6.9,100,'A weekly game night turns into the real thing when the host seems to have been kidnapped.'],
+['Palm Springs',2020,'Comedy/Romance/Sci-Fi',7.4,90,'Two wedding guests get stuck in a time loop and decide to make the best of it.'],
+['Booksmart',2019,'Comedy',7.1,102,'Two overachievers decide to cram four years of fun into the night before graduation.'],
+['Shaun of the Dead',2004,'Comedy/Horror',7.9,99,'A slacker tries to rescue his mum and win back his girlfriend when zombies overrun London.'],
+['Free Guy',2021,'Comedy/Action/Sci-Fi',7.1,115,'A bank teller in a video game realizes he\u2019s a background character and decides to be the hero.'],
+['Monty Python and the Holy Grail',1975,'Comedy/Adventure/Fantasy',8.2,91,'King Arthur and his knights bumble through a very silly quest for the Holy Grail.'],
+['Jojo Rabbit',2019,'Comedy/Drama',7.9,108,'A boy with an imaginary Hitler for a friend discovers a girl hiding in his family\u2019s home.'],
+['Hot Fuzz',2007,'Comedy/Action/Mystery',7.8,121,'A top London cop is reassigned to a sleepy village with a suspiciously high accident rate.'],
+['Anchorman: The Legend of Ron Burgundy',2004,'Comedy',7.2,94,'A swaggering 1970s news anchor\u2019s world is shaken when a woman joins his team.'],
+['The Big Lebowski',1998,'Comedy/Crime',8.1,117,'A laid-back bowler is mistaken for a millionaire with his name and dragged into a kidnapping.'],
+['The Shawshank Redemption',1994,'Drama',9.3,142,'A banker sentenced to life forms a lasting friendship in prison and never stops planning.'],
+['Whiplash',2014,'Drama',8.5,106,'A young drummer pushes himself to the edge under a ruthless conservatory teacher.'],
+['Little Miss Sunshine',2006,'Comedy/Drama',7.8,101,'A dysfunctional family piles into a van to get their daughter to a beauty pageant.'],
+['Good Will Hunting',1997,'Drama/Romance',8.3,126,'A janitor with a genius mind is pushed by a therapist to face who he really is.'],
+['Forrest Gump',1994,'Drama/Romance/Comedy',8.8,142,'A kind, simple man drifts through decades of American history, holding on to his love for Jenny.'],
+['The Social Network',2010,'Drama',7.8,120,'The story of how Facebook began, and the friendships and lawsuits that came with it.'],
+['Moonlight',2016,'Drama',7.4,111,'In three chapters, a young man in Miami works out who he is and who he can trust.'],
+['Lady Bird',2017,'Comedy/Drama',7.4,94,'A restless Sacramento senior clashes with her mother while longing for a life elsewhere.'],
+['Parasite',2019,'Thriller/Drama/Comedy',8.5,132,'A poor family slowly worms its way into the household of a wealthy one, with tense results.'],
+['Get Out',2017,'Horror/Thriller/Mystery',7.7,104,'A weekend at his girlfriend\u2019s family estate reveals something wrong beneath the polite welcome.'],
+['A Quiet Place',2018,'Horror/Sci-Fi/Thriller',7.5,90,'A family lives in near silence to hide from creatures that hunt by sound.'],
+['Hereditary',2018,'Horror/Mystery/Drama',7.3,127,'A family begins to unravel after the death of their secretive grandmother.'],
+['The Conjuring',2013,'Horror/Mystery/Thriller',7.5,112,'Paranormal investigators help a family terrorized by a dark presence in their farmhouse.'],
+['Scream',1996,'Horror/Mystery',7.4,111,'A masked killer stalks a small town\u2019s teens, and everyone knows the rules of horror films.'],
+['The Shining',1980,'Horror/Drama',8.4,146,'A writer taking a winter caretaker job at an isolated hotel slowly loses his mind.'],
+['Alien',1979,'Horror/Sci-Fi',8.5,117,'The crew of a mining ship discovers that something has come aboard with them.'],
+['It Follows',2014,'Horror/Mystery',6.8,100,'A teenager is pursued by a shape-shifting entity that never stops walking toward her.'],
+['Midsommar',2019,'Horror/Drama/Mystery',7.1,148,'A grieving woman joins her boyfriend\u2019s friends at a Swedish festival that turns sinister.'],
+['The Cabin in the Woods',2011,'Horror/Mystery/Comedy',7.0,95,'Five friends head to a remote cabin where nothing is quite what it seems.'],
+['Train to Busan',2016,'Horror/Action/Thriller',7.6,118,'Passengers fight to survive on a Korean express train as a zombie outbreak spreads.'],
+['Barbarian',2022,'Horror/Thriller/Mystery',7.0,102,'A woman arrives at her double-booked rental and finds something terrible in the basement.'],
+['The Babadook',2014,'Horror/Drama/Mystery',6.8,94,'A grieving mother and her young son are haunted by a creature from a picture book.'],
+['Gone Girl',2014,'Thriller/Mystery/Drama',8.1,149,'A husband becomes the prime suspect when his wife disappears on their anniversary.'],
+['Se7en',1995,'Thriller/Crime/Mystery',8.6,127,'Two detectives chase a killer who stages his murders around the seven deadly sins.'],
+['Prisoners',2013,'Thriller/Mystery/Crime',8.1,153,'A desperate father takes matters into his own hands when his daughter and her friend vanish.'],
+['Inception',2010,'Sci-Fi/Thriller/Action',8.8,148,'A thief who steals secrets from dreams is offered a final job: plant an idea instead.'],
+['The Silence of the Lambs',1991,'Thriller/Crime/Horror',8.6,118,'An FBI trainee consults an imprisoned psychiatrist to catch a serial killer.'],
+['Zodiac',2007,'Crime/Thriller/Mystery',7.7,157,'A cartoonist, a reporter and a cop are consumed by the hunt for a Bay Area killer.'],
+['Shutter Island',2010,'Thriller/Mystery',8.2,138,'A U.S. marshal investigates a patient\u2019s disappearance from an island hospital for the criminally insane.'],
+['Nightcrawler',2014,'Thriller/Crime/Drama',7.8,117,'A drifter finds his calling filming crime scenes for local news, and keeps escalating.'],
+['Rear Window',1954,'Mystery/Thriller',8.5,112,'A photographer laid up with a broken leg suspects his neighbor of murder.'],
+['Memento',2000,'Thriller/Mystery',8.4,113,'A man who can\u2019t form new memories hunts his wife\u2019s killer using notes and tattoos.'],
+['Searching',2018,'Thriller/Mystery',7.6,102,'A father searches for his missing daughter through her laptop, phone and social accounts.'],
+['Sicario',2015,'Thriller/Crime/Action',7.6,121,'An FBI agent is pulled into a covert operation against a cartel on the Mexican border.'],
+['Oldboy',2003,'Thriller/Mystery/Action',8.3,120,'A man freed after fifteen years of captivity has five days to find out who locked him up.'],
+['Fight Club',1999,'Drama/Thriller',8.8,139,'An insomniac office worker and a charismatic soap maker start an underground fight club that grows out of control.'],
+['Glass Onion',2022,'Mystery/Comedy/Crime',7.1,139,'Detective Benoit Blanc joins a tech billionaire\u2019s friends on a private island, and a murder follows.'],
+['Knives Out',2019,'Mystery/Comedy/Crime',7.9,130,'A famous novelist is found dead and every member of his family has something to hide.'],
+['Heat',1995,'Crime/Thriller/Action',8.3,170,'A career thief and an obsessive detective circle each other across Los Angeles.'],
+['The Departed',2006,'Crime/Thriller/Drama',8.5,151,'An undercover cop and a mole inside the police each try to unmask the other.'],
+['Pulp Fiction',1994,'Crime/Drama/Thriller',8.9,154,'Hitmen, a boxer and a mob boss\u2019s wife cross paths in intertwined stories of Los Angeles.'],
+['The Godfather',1972,'Crime/Drama',9.2,175,'The head of a crime dynasty hands the family business to his reluctant youngest son.'],
+['Goodfellas',1990,'Crime/Drama',8.7,145,'A young man rises through the New York mob and watches it slowly fall apart.'],
+['Ocean\u2019s Eleven',2001,'Crime/Thriller/Comedy',7.7,116,'Danny Ocean assembles a slick crew to rob three Las Vegas casinos at once.'],
+['Catch Me If You Can',2002,'Crime/Drama/Comedy',8.1,141,'A teenage con artist forges checks and identities while an FBI agent follows close behind.'],
+['Snatch',2000,'Crime/Comedy',8.3,104,'Diamond thieves, bare-knuckle boxers and gangsters collide in London.'],
+['Drive',2011,'Crime/Drama/Action',7.8,100,'A quiet stunt driver who moonlights as a getaway driver tries to protect his neighbor and her son.'],
+['La La Land',2016,'Romance/Drama/Comedy',8.0,128,'A jazz pianist and an aspiring actress fall in love in Los Angeles while chasing their dreams.'],
+['The Notebook',2004,'Romance/Drama',7.8,123,'A summer romance between a mill worker and a rich girl is retold decades later.'],
+['Pride & Prejudice',2005,'Romance/Drama',7.8,129,'Elizabeth Bennet and the proud Mr. Darcy learn to see past their first impressions.'],
+['Before Sunrise',1995,'Romance/Drama',8.1,101,'Two strangers meet on a train and spend one night walking and talking through Vienna.'],
+['Crazy Rich Asians',2018,'Romance/Comedy',6.9,120,'A professor travels to Singapore to meet her boyfriend\u2019s very wealthy and very watchful family.'],
+['When Harry Met Sally\u2026',1989,'Romance/Comedy',7.7,96,'Can men and women ever be just friends? Two New Yorkers test the idea over a decade.'],
+['Eternal Sunshine of the Spotless Mind',2004,'Romance/Sci-Fi/Drama',8.3,108,'After a painful breakup, a couple try to erase each other from their memories.'],
+['Notting Hill',1999,'Romance/Comedy',7.2,124,'A London bookshop owner falls for the most famous movie star in the world.'],
+['About Time',2013,'Romance/Comedy/Fantasy',7.8,123,'A young man discovers he can travel back in time and uses it to find love.'],
+['Past Lives',2023,'Romance/Drama',7.8,105,'Two childhood friends reunite decades after one emigrated and wonder about the lives they didn\u2019t live.'],
+['Portrait of a Lady on Fire',2019,'Romance/Drama',8.1,122,'A painter hired to secretly portray a reluctant bride falls for her on a remote island.'],
+['Crazy, Stupid, Love.',2011,'Romance/Comedy/Drama',7.4,118,'A newly divorced man gets help from a smooth operator, and everyone\u2019s love life gets tangled.'],
+['Silver Linings Playbook',2012,'Romance/Comedy/Drama',7.7,122,'A man fresh out of a mental hospital and a grieving widow find an unlikely partner in a dance contest.'],
+['The Big Sick',2017,'Romance/Comedy/Drama',7.5,120,'A comedian\u2019s relationship with a grad student is tested when she falls into a coma.'],
+['Call Me by Your Name',2017,'Romance/Drama',7.8,132,'A summer in northern Italy changes a teenager when his father\u2019s research assistant arrives.'],
+['Interstellar',2014,'Sci-Fi/Adventure/Drama',8.7,169,'Astronauts travel through a wormhole in search of a new home for humanity.'],
+['Blade Runner 2049',2017,'Sci-Fi/Thriller/Drama',8.0,164,'A new blade runner uncovers a secret that could upend what\u2019s left of society.'],
+['Arrival',2016,'Sci-Fi/Drama/Mystery',7.9,116,'A linguist is recruited to find out why twelve alien ships have landed on Earth.'],
+['Ex Machina',2014,'Sci-Fi/Thriller/Drama',7.7,108,'A programmer is invited to test whether a reclusive founder\u2019s humanoid robot is truly conscious.'],
+['Back to the Future',1985,'Sci-Fi/Comedy/Adventure',8.5,116,'A teenager is accidentally sent to 1955 and has to make sure his parents fall in love.'],
+['Star Wars: A New Hope',1977,'Sci-Fi/Adventure/Fantasy',8.6,121,'A farm boy joins a smuggler, a princess and a wizard to fight an empire\u2019s planet-killing weapon.'],
+['Guardians of the Galaxy',2014,'Sci-Fi/Action/Comedy',8.0,121,'A band of misfit criminals teams up to keep a powerful orb out of a fanatic\u2019s hands.'],
+['The Martian',2015,'Sci-Fi/Adventure/Drama',8.0,144,'An astronaut left behind on Mars has to science his way to survival.'],
+['District 9',2009,'Sci-Fi/Action/Thriller',7.9,112,'An agent relocating aliens from a Johannesburg slum is exposed to their technology.'],
+['Her',2013,'Sci-Fi/Romance/Drama',8.0,126,'A lonely writer falls for the voice of his new AI operating system.'],
+['Moon',2009,'Sci-Fi/Mystery/Drama',7.8,97,'A lone astronaut near the end of a three-year lunar mining stint begins to doubt what he\u2019s seeing.'],
+['Dune: Part Two',2024,'Sci-Fi/Adventure/Action',8.5,166,'Paul Atreides joins the Fremen to seek revenge while visions of a terrible future close in.'],
+['Everything Everywhere All at Once',2022,'Sci-Fi/Comedy/Action',7.8,139,'An overwhelmed laundromat owner is pulled across the multiverse to stop a force that could unravel it.'],
+['Minority Report',2002,'Sci-Fi/Thriller/Action',7.6,145,'In a future where murders are predicted before they happen, a cop is accused of one he hasn\u2019t committed.'],
+['The Matrix',1999,'Sci-Fi/Action',8.7,136,'A hacker learns that his reality is a simulation and joins the rebels fighting the machines behind it.'],
+['Pan\u2019s Labyrinth',2006,'Fantasy/Drama/Horror',8.2,118,'In 1944 Spain, a girl discovers a mythic labyrinth and a faun who sets her three tasks.'],
+['Harry Potter and the Prisoner of Azkaban',2004,'Fantasy/Adventure',7.9,142,'Harry\u2019s third year at Hogwarts begins with news that a notorious prisoner has escaped.'],
+['Stardust',2007,'Fantasy/Adventure/Romance',7.6,127,'A young man crosses a wall into a magic kingdom to retrieve a fallen star.'],
+['The Shape of Water',2017,'Fantasy/Romance/Drama',7.3,123,'A mute cleaner at a government lab forms a bond with a captive amphibious creature.'],
+['Big Fish',2003,'Fantasy/Drama/Adventure',8.0,125,'A son tries to separate fact from fiction in his dying father\u2019s tall tales.'],
+['Labyrinth',1986,'Fantasy/Adventure',7.4,101,'A teenager has thirteen hours to cross a goblin king\u2019s maze and rescue her baby brother.'],
+['Thor: Ragnarok',2017,'Action/Comedy/Fantasy',7.9,130,'Thor is stranded on a junkyard planet and has to escape in time to stop Ragnarok.'],
+['Willy Wonka & the Chocolate Factory',1971,'Fantasy/Comedy/Adventure',7.8,100,'Five children win a tour of a mysterious candy factory run by an unpredictable inventor.']
+];
+const MOVIES=RAW.map((m,i)=>({id:i,title:m[0],year:m[1],genres:m[2].split('/'),rating:m[3],runtime:m[4],desc:m[5]}));
+
+/* =====================================================================
+   GENERATED POSTER ART – no remote images are allowed on this page,
+   so every poster is drawn from the movie's genre and title.
+   ===================================================================== */
+const PAL={
+ 'Action':['#2a0d08','#9c2f12','#ffb340','#ff5b2e'],
+ 'Adventure':['#10302f','#1f7060','#ffd37e','#f08a4b'],
+ 'Animation':['#2c1b66','#6d4dff','#ffd95e','#ff7cba'],
+ 'Comedy':['#3b1452','#ff6b8e','#ffe066','#fff3b0'],
+ 'Crime':['#16130f','#3b3023','#e0aa45','#8c2424'],
+ 'Drama':['#1a2032','#52638a','#efdcc0','#c08a68'],
+ 'Fantasy':['#1c1544','#5c3b9c','#a2e9ff','#ffd2ef'],
+ 'Horror':['#09090c','#2b121a','#d02a36','#e9e2d2'],
+ 'Mystery':['#0f1b26','#245068','#80dccb','#eadfae'],
+ 'Romance':['#3c1031','#c64a6e','#ffb7c5','#ffe5d6'],
+ 'Sci-Fi':['#06112b','#1d3f94','#82dcff','#c892ff'],
+ 'Thriller':['#0a1518','#1f4d55','#f3c553','#dc5a3c']
+};
+function hash(str){let h=1779033703^str.length;for(let i=0;i<str.length;i++){h=Math.imul(h^str.charCodeAt(i),3432918353);h=(h<<13)|(h>>>19)}return h>>>0}
+function rng(seed){return function(){seed|=0;seed=(seed+0x6D2B79F5)|0;let t=Math.imul(seed^(seed>>>15),1|seed);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296}}
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function motif(g,R,p,u){
+  const [a,b,c,d]=p; const r=(lo,hi)=>lo+R()*(hi-lo); let s='';
+  const stars=n=>{for(let i=0;i<n;i++)s+=`<circle cx="${r(5,395).toFixed(1)}" cy="${r(20,430).toFixed(1)}" r="${r(.8,2.6).toFixed(1)}" fill="#fff" opacity="${r(.4,1).toFixed(2)}"/>`};
+  switch(g){
+    case 'Action':{
+      const cx=r(150,250),cy=r(240,300);
+      for(let i=0;i<22;i++){const an=i/22*Math.PI*2;s+=`<line x1="${cx}" y1="${cy}" x2="${cx+Math.cos(an)*600}" y2="${cy+Math.sin(an)*600}" stroke="${i%2?c:d}" stroke-opacity="${i%2?.16:.3}" stroke-width="${r(6,22).toFixed(1)}"/>`}
+      s+=`<circle cx="${cx}" cy="${cy}" r="${r(46,70)}" fill="${c}"/><circle cx="${cx}" cy="${cy}" r="28" fill="${a}"/>`;break}
+    case 'Adventure':{
+      s+=`<circle cx="${r(130,270)}" cy="${r(170,230)}" r="${r(52,78)}" fill="${c}" opacity=".95"/>`;
+      [d,'#14463f','#0a2625'].forEach((col,i)=>{const y=330+i*50;let pts=`0,600 0,${y}`;for(let x=0;x<=400;x+=40)pts+=` ${x+r(-10,10)},${(y-r(10,95)).toFixed(0)}`;pts+=` 400,${y} 400,600`;s+=`<polygon points="${pts}" fill="${col}" opacity="${.62+i*.17}"/>`});break}
+    case 'Animation':{
+      const cols=[a,b,c,d];
+      for(let i=0;i<7;i++)s+=`<circle cx="${r(40,360).toFixed(0)}" cy="${r(160,420).toFixed(0)}" r="${r(30,85).toFixed(0)}" fill="${cols[i%4]}" opacity="${r(.55,.9).toFixed(2)}"/>`;
+      s+=`<path d="M70 ${r(300,360).toFixed(0)} q40 -50 80 0 t80 0 t80 0" stroke="#fff" stroke-width="10" fill="none" stroke-linecap="round" opacity=".85"/>`;break}
+    case 'Comedy':{
+      const cx=r(160,240),cy=r(250,300);
+      [120,92,64,36].forEach((rad,i)=>s+=`<circle cx="${cx}" cy="${cy}" r="${rad}" fill="${[d,c,a,'#fff'][i]}" opacity="${[.35,.9,.9,.95][i]}"/>`);
+      for(let i=0;i<26;i++)s+=`<circle cx="${r(10,390).toFixed(0)}" cy="${r(90,470).toFixed(0)}" r="${r(3,9).toFixed(1)}" fill="${i%2?c:'#fff'}" opacity=".75"/>`;break}
+    case 'Crime':{
+      s+=`<polygon points="${r(0,60)},0 ${r(120,200)},0 ${r(320,400)},560 ${r(160,260)},560" fill="${c}" opacity=".2"/>`;
+      for(let y=110;y<440;y+=28)s+=`<rect x="0" y="${y}" width="400" height="9" fill="${c}" opacity=".16"/>`;
+      const x=r(130,270);
+      s+=`<circle cx="${x}" cy="330" r="17" fill="#050403" opacity=".92"/><path d="M${x-32} 480 L${x-22} 352 Q${x} 340 ${x+22} 352 L${x+32} 480Z" fill="#050403" opacity=".92"/><rect x="${x+46}" y="250" width="5" height="230" fill="${d}" opacity=".85"/>`;break}
+    case 'Drama':{
+      const y=r(300,340);
+      s+=`<circle cx="${r(150,250).toFixed(0)}" cy="${y-20}" r="${r(70,100).toFixed(0)}" fill="${c}" opacity=".92"/><rect x="0" y="${y}" width="400" height="300" fill="${a}" opacity=".94"/>`;
+      for(let i=0;i<7;i++)s+=`<rect x="${r(0,260).toFixed(0)}" y="${y+10+i*22}" width="${r(60,200).toFixed(0)}" height="3" fill="${c}" opacity="${(.5-i*.06).toFixed(2)}"/>`;break}
+    case 'Fantasy':{
+      stars(32);
+      const mx=r(230,320);
+      s+=`<path d="M${mx} 126 A44 44 0 0 0 ${mx} 214 A60 60 0 0 1 ${mx} 126Z" fill="${c}"/>`;
+      s+=`<polygon points="0,600 0,410 60,350 110,396 170,310 240,384 300,336 400,414 400,600" fill="${d}" opacity=".5"/>`;
+      const tx=r(110,200);
+      s+=`<rect x="${tx}" y="340" width="34" height="130" fill="#0b0a1a"/><polygon points="${tx-6},340 ${tx+17},290 ${tx+40},340" fill="#0b0a1a"/><rect x="${tx+13}" y="364" width="8" height="14" fill="${c}"/>`;break}
+    case 'Horror':{
+      const mx=r(150,250),my=r(190,240),mr=r(64,86);
+      s+=`<circle cx="${mx}" cy="${my}" r="${mr+26}" fill="${d}" opacity=".1"/><circle cx="${mx}" cy="${my}" r="${mr}" fill="${d}" opacity=".95"/>`;
+      for(let i=0;i<5;i++){let x=r(0,400),y=480,pts=`M${x.toFixed(0)} ${y}`;for(let k=0;k<4;k++){x+=r(-30,30);y-=r(40,80);pts+=` L${x.toFixed(0)} ${y.toFixed(0)}`}s+=`<path d="${pts}" stroke="#04040a" stroke-width="${r(3,7).toFixed(1)}" fill="none" stroke-linecap="round"/>`}
+      for(let i=0;i<4;i++)s+=`<rect x="${r(-60,100).toFixed(0)}" y="${340+i*34}" width="${r(260,460).toFixed(0)}" height="16" rx="8" fill="${d}" opacity="${r(.05,.13).toFixed(2)}"/>`;
+      s+=`<rect x="0" y="${my+mr+4}" width="400" height="3" fill="${c}" opacity=".8"/>`;break}
+    case 'Mystery':{
+      const cx=r(150,230),cy=r(230,290);
+      for(let i=0;i<9;i++)s+=`<rect x="${i*50-40}" y="-100" width="14" height="800" fill="${c}" opacity=".07" transform="rotate(18 200 300)"/>`;
+      s+=`<circle cx="${cx}" cy="${cy}" r="86" fill="${a}" opacity=".55"/><circle cx="${cx}" cy="${cy}" r="86" fill="none" stroke="${c}" stroke-width="14"/><line x1="${cx+62}" y1="${cy+62}" x2="${cx+132}" y2="${cy+132}" stroke="${c}" stroke-width="22" stroke-linecap="round"/><circle cx="${cx-24}" cy="${cy-26}" r="22" fill="${d}" opacity=".25"/>`;break}
+    case 'Romance':{
+      const cy=r(250,300),dx=r(54,80);
+      s+=`<circle cx="${200-dx}" cy="${cy}" r="${r(90,110)}" fill="${c}" opacity=".85" style="mix-blend-mode:screen"/><circle cx="${200+dx}" cy="${cy+r(-20,20)}" r="${r(90,110)}" fill="${d}" opacity=".8" style="mix-blend-mode:screen"/>`;
+      for(let i=0;i<14;i++)s+=`<circle cx="${r(10,390).toFixed(0)}" cy="${r(80,480).toFixed(0)}" r="${r(2,5).toFixed(1)}" fill="#fff" opacity=".4"/>`;break}
+    case 'Sci-Fi':{
+      stars(40);
+      const cx=r(150,250),cy=r(240,290),pr=r(70,96),rot=r(-28,-12);
+      s+=`<radialGradient id="${u}pl" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="${c}"/><stop offset=".6" stop-color="${b}"/><stop offset="1" stop-color="${a}"/></radialGradient>`;
+      s+=`<g transform="rotate(${rot.toFixed(1)} ${cx.toFixed(0)} ${cy.toFixed(0)})"><ellipse cx="${cx}" cy="${cy}" rx="${pr*1.9}" ry="${pr*.45}" fill="none" stroke="${d}" stroke-width="7" opacity=".55"/></g>`;
+      s+=`<circle cx="${cx}" cy="${cy}" r="${pr}" fill="url(#${u}pl)"/>`;
+      s+=`<g transform="rotate(${rot.toFixed(1)} ${cx.toFixed(0)} ${cy.toFixed(0)})"><path d="M${cx-pr*1.9} ${cy} A${pr*1.9} ${pr*.45} 0 0 0 ${cx+pr*1.9} ${cy}" fill="none" stroke="${d}" stroke-width="7"/></g>`;break}
+    case 'Thriller':{
+      for(let y=60;y<310;y+=22)s+=`<rect x="0" y="${y}" width="400" height="6" fill="${c}" opacity=".16"/>`;
+      s+=`<rect x="${r(240,300).toFixed(0)}" y="180" width="70" height="300" fill="${c}" opacity=".92"/>`;
+      const fx=r(80,160);
+      s+=`<polygon points="${fx-14},480 ${fx+14},480 ${fx+270},480 ${fx+240},500" fill="#000" opacity=".4"/><circle cx="${fx}" cy="368" r="15" fill="#04090a"/><path d="M${fx-24} 480 L${fx-18} 386 Q${fx} 376 ${fx+18} 386 L${fx+24} 480Z" fill="#04090a"/>`;break}
+  }
+  return s;
+}
+function wrapTitle(t){
+  const words=t.toUpperCase().split(' ');const lines=[];let cur='';
+  for(const w of words){if(cur&&(cur+' '+w).length>13){lines.push(cur);cur=w}else cur=(cur?cur+' ':'')+w}
+  if(cur)lines.push(cur);return lines;
+}
+const posterCache=new Map();
+function poster(m){
+  if(m.posterPath){return `<img class="art" src="https://image.tmdb.org/t/p/w780${esc(m.posterPath)}" alt="${esc(m.title)} poster" loading="lazy">`}
+  if(posterCache.has(m.id))return posterCache.get(m.id);
+  const g=m.genres[0],p=PAL[g]||PAL.Drama,R=rng(hash(m.title+m.year)),u='pz'+m.id;
+  const lines=wrapTitle(m.title);
+  const longest=Math.max(...lines.map(l=>l.length));
+  let fs=Math.min(66,330/(longest*.52));fs=Math.min(fs,168/(lines.length*.94));
+  const tx=lines.map((l,i)=>`<text x="30" y="${(546-(lines.length-1-i)*fs*.94).toFixed(1)}" font-size="${fs.toFixed(1)}">${esc(l)}</text>`).join('');
+  const svg=`<svg class="art" viewBox="0 0 400 600" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Generated poster for ${esc(m.title)}" style="font-family:var(--display)"><defs><linearGradient id="${u}g" x1="0" y1="0" x2=".25" y2="1"><stop offset="0" stop-color="${p[0]}"/><stop offset="1" stop-color="${p[1]}"/></linearGradient><linearGradient id="${u}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".84"/></linearGradient><filter id="${u}n"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter></defs><rect width="400" height="600" fill="url(#${u}g)"/>${motif(g,R,p,u)}<rect y="330" width="400" height="270" fill="url(#${u}s)"/><rect width="400" height="600" filter="url(#${u}n)" opacity=".14" style="mix-blend-mode:overlay"/><rect x="12" y="12" width="376" height="576" rx="4" fill="none" stroke="#fff" stroke-opacity=".22"/><text x="30" y="54" font-size="17" fill="#fff" fill-opacity=".8" style="font-weight:600;letter-spacing:.08em">${m.year}</text><g fill="#fff" style="font-weight:800;font-stretch:75%;letter-spacing:-.01em">${tx}</g></svg>`;
+  posterCache.set(m.id,svg);return svg;
+}
+const genreArtCache=new Map();
+function genreArt(g,idx){
+  if(genreArtCache.has(g))return genreArtCache.get(g);
+  const p=PAL[g],R=rng(hash('genre:'+g)),u='gz'+idx;
+  const svg=`<svg viewBox="0 150 400 267" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="${u}g" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stop-color="${p[0]}"/><stop offset="1" stop-color="${p[1]}"/></linearGradient><filter id="${u}n"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter></defs><rect y="0" width="400" height="600" fill="url(#${u}g)"/>${motif(g,R,p,u)}<rect y="0" width="400" height="600" filter="url(#${u}n)" opacity=".14" style="mix-blend-mode:overlay"/></svg>`;
+  genreArtCache.set(g,svg);return svg;
+}
+let mkN=0;
+function markSVG(cls){
+  const id='mk'+(++mkN);
+  return `<svg class="${cls||''}" viewBox="0 0 48 28" aria-hidden="true"><defs><clipPath id="${id}"><circle cx="14" cy="14" r="14"/></clipPath></defs><circle class="a" cx="14" cy="14" r="14" fill="var(--p1)"/><circle class="b" cx="34" cy="14" r="14" fill="var(--p2)"/><circle class="lens" cx="34" cy="14" r="14" fill="var(--match)" clip-path="url(#${id})"/></svg>`;
+}
+
+/* =====================================================================
+   STATE
+   ===================================================================== */
+const reduced=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+const LS={
+  get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},
+  del(k){try{localStorage.removeItem(k)}catch(e){}}
+};
+const S={
+  mode:null,            // 'local' | 'online'
+  screen:'setup',       // setup | genres | swipe | matches
+  form:{tab:'local',n1:'',n2:'',name:'',code:''},
+  names:{p1:'Player 1',p2:'Player 2'},
+  votes:{p1:{},p2:{}},  // movieId -> 1 (like) | 0 (skip)
+  genres:[],deck:[],sel:new Set(),
+  matchLog:[],knownMatches:new Set(),matchQueue:[],
+  overlay:null,handoff:false,busy:false,editingGenres:false,leaveArm:false,
+  me:'p1',room:null,present:{},rev:undefined,lastRevMine:null,joinedAt:0,lastPick:0,
+  db:null,dbReady:false,unsubs:[],hydrated:false,working:false,error:'',_lastCur:undefined,liveMovies:[],livePage:1,liveExhausted:false,loadingMore:false
+};
+const other=s=>s==='p1'?'p2':'p1';
+const $app=document.getElementById('app');
+
+function resolved(id){const a=S.votes.p1[id],b=S.votes.p2[id];return a===0||b===0||(a===1&&b===1)}
+function curId(){for(const id of S.deck){if(!resolved(id))return id}return null}
+function matchIds(){return Object.keys(S.votes.p1).map(Number).filter(id=>S.votes.p1[id]===1&&S.votes.p2[id]===1)}
+function orderedMatches(){
+  const ids=new Set(matchIds());const out=S.matchLog.filter(id=>ids.has(id));
+  ids.forEach(id=>{if(!out.includes(id))out.push(id)});return out;
+}
+function activeSlot(){
+  if(S.mode==='online')return S.me;
+  const id=curId();return S.votes.p1[id]===undefined?'p1':'p2';
+}
+function buildDeck(genres){
+  const set=new Set(genres);
+  const ids=MOVIES.filter(m=>m.genres.some(g=>set.has(g))&&!resolved(m.id)).map(m=>m.id);
+  for(let i=ids.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ids[i],ids[j]]=[ids[j],ids[i]]}
+  return ids;
+}
+
+async function loadLiveRecommendations(genres,{pageStart=1,limit=120,pageCount=5}={}){
+  const excludeIds=(S.liveMovies||[]).map(m=>m.tmdbId).filter(Boolean);
+  const res=await fetch('/api/recommend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({genres,limit,pageStart,pageCount,excludeIds})});
+  if(!res.ok){let msg='Live recommendations failed';try{const j=await res.json();msg=j.error||msg}catch(_){}throw new Error(msg)}
+  const data=await res.json();
+  if(!Array.isArray(data.movies))throw new Error('Invalid recommendation response');
+  const start=MOVIES.length;
+  const fresh=data.movies.map((m,i)=>({
+    id:start+i,title:m.title||'Untitled',year:Number(m.year)||0,genres:Array.isArray(m.genres)?m.genres:genres,
+    rating:Number(m.rating)||0,runtime:Number(m.runtime)||0,desc:m.overview||'A current movie recommendation.',
+    posterPath:m.posterPath||'',tmdbId:m.tmdbId,aiReason:m.reason||'',live:true
+  }));
+  MOVIES.push(...fresh);
+  return {ids:fresh.map(m=>m.id),movies:fresh,nextPage:Number(data.nextPage)||pageStart+pageCount,hasMore:data.hasMore!==false,source:data.source,aiUsed:data.aiUsed,aiError:data.aiError,candidateCount:data.candidateCount};
+}
+
+async function loadMoreLiveMovies(force=false){
+  if(S.loadingMore||S.liveExhausted||!S.genres.length||S.working)return;
+  const remaining=S.deck.filter(i=>!resolved(i)).length;
+  if(!force&&remaining>40)return;
+  S.loadingMore=true;render();
+  try{
+    const batch=await loadLiveRecommendations(S.genres,{pageStart:S.livePage,limit:120,pageCount:5});
+    if(batch.ids.length){
+      S.deck.push(...batch.ids);
+      S.liveMovies.push(...batch.movies);
+      S.livePage=batch.nextPage;
+      if(!batch.hasMore)S.liveExhausted=true;
+      if(S.mode==='online'){
+        const rev=Date.now();S.rev=rev;S.lastRevMine=rev;
+        const code=S.room,deck=S.deck,movies=S.liveMovies;
+        enqueue(()=>S.db.doc(`rooms/${code}`).set({genres:S.genres,deck,movies,rev}));
+      }else saveLocal();
+      toast(`Loaded ${batch.ids.length} live movies${batch.aiUsed?' · AI ranked':''}`);
+    }else{
+      S.liveExhausted=true;
+    }
+  }catch(e){
+    console.warn(e);
+    S.error=e.message||'Could not load more live movies right now.';
+  }finally{S.loadingMore=false;render()}
+}
+
+const fmtRun=m=>`${Math.floor(m/60)}h ${m%60}m`;
+const initial=n=>esc(((n||'').trim()[0]||'?').toUpperCase());
+const genreList=gs=>gs.length<=3?gs.join(', '):gs.slice(0,3).join(', ')+` +${gs.length-3}`;
+
+function toast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),3000);
+}
+function confetti(){
+  if(reduced)return;
+  const fx=document.getElementById('fx');const cols=['var(--p1)','var(--p2)','var(--match)','#fff'];
+  for(let i=0;i<48;i++){
+    const s=document.createElement('i');
+    s.style.cssText=`left:${Math.random()*100}%;background:${cols[i%4]};--dx:${((Math.random()-.5)*260).toFixed(0)}px;--rot:${(Math.random()*720-360).toFixed(0)}deg;animation-delay:${(Math.random()*.4).toFixed(2)}s;animation-duration:${(1.9+Math.random()*1.3).toFixed(2)}s;width:${(6+Math.random()*7).toFixed(0)}px;height:${(10+Math.random()*10).toFixed(0)}px`;
+    fx.appendChild(s);
+  }
+  setTimeout(()=>{fx.innerHTML=''},4000);
+}
+
+/* ---------- local persistence ---------- */
+function saveLocal(){
+  if(S.mode!=='local')return;
+  LS.set('tt:local',{names:S.names,genres:S.genres,deck:S.deck,liveMovies:S.liveMovies||[],votes:S.votes,matchLog:S.matchLog});
+}
+
+/* =====================================================================
+   MATCHES
+   ===================================================================== */
+function scanMatches(silent){
+  for(const id of matchIds()){
+    if(!S.knownMatches.has(id)){
+      S.knownMatches.add(id);
+      if(!S.matchLog.includes(id))S.matchLog.push(id);
+      if(!silent)S.matchQueue.push(id);
+    }
+  }
+  showNextMatch();
+}
+function showNextMatch(){
+  if(!S.overlay&&S.matchQueue.length){
+    S.overlay={type:'match',id:S.matchQueue.shift(),fresh:true};
+    setTimeout(confetti,60);
+  }
+}
+function closeOverlay(){
+  S.overlay=null;showNextMatch();render();
+}
+
+/* =====================================================================
+   VOTING
+   ===================================================================== */
+function canVote(){
+  if(S.busy||S.overlay||S.handoff||S.screen!=='swipe')return false;
+  const id=curId();if(id===null)return false;
+  return S.votes[activeSlot()][id]===undefined;
+}
+function vote(v){
+  if(!canVote())return;
+  const id=curId(),slot=activeSlot();
+  const partnerLiked=S.votes[other(slot)][id]===1;
+  const resolves=v===0||partnerLiked;
+  S.busy=true;
+  const el=document.querySelector('.card');
+  if(el)el.classList.add(resolves?(v?'out-right':'out-left'):'pulse');
+  setTimeout(()=>{
+    S.votes[slot][id]=v;S.busy=false;
+    if(S.mode==='online')pushVotes();else saveLocal();
+    scanMatches(false);
+    if(S.mode==='local'&&v===1&&slot==='p1'&&S.votes.p2[id]===undefined)S.handoff=true;
+    render();
+    // Keep the experience continuous: replenish before the couple reaches the end.
+    if(v===0||partnerLiked)loadMoreLiveMovies(false);
+  },reduced?0:(resolves?270:380));
+}
+
+/* =====================================================================
+   ONLINE ROOMS (db capability)
+   ===================================================================== */
+let writeChain=Promise.resolve();
+function enqueue(fn){writeChain=writeChain.then(fn).catch(dbError);return writeChain}
+function dbError(e){
+  const code=e&&e.code;
+  S.working=false;
+  if(code==='invalid_argument'||code==='not_granted')S.error='This account can open the page but can\u2019t save to it, so two-device rooms won\u2019t work here. Use Same screen instead, or ask the owner to share the page with edit access.';
+  else if(code==='quota_exceeded')S.error='This page\u2019s storage is full, so a new room can\u2019t be created.';
+  else S.error='Couldn\u2019t reach the room. Check your connection and try again.';
+  toast(S.error.length>90?'Couldn\u2019t reach the room':S.error);
+  render();
+}
+const CODE_CHARS='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+function genCode(){let c='';for(let i=0;i<4;i++)c+=CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)];return c}
+function pushVotes(){
+  const code=S.room,me=S.me;
+  const payload={votes:Object.assign({},S.votes[me]),name:S.names[me]};
+  enqueue(()=>S.db.doc(`rooms/${code}/votes/${me}`).set(payload));
+}
+function detach(){S.unsubs.forEach(u=>{try{u()}catch(e){}});S.unsubs=[]}
+function attachRoom(){
+  detach();
+  const db=S.db,code=S.room;S.hydrated=false;S.joinedAt=Date.now();S.present={};
+  const bad=e=>dbError(e);
+  S.unsubs.push(db.doc(`rooms/${code}`).onSnapshot(onRoom,bad));
+  S.unsubs.push(db.collection(`rooms/${code}/votes`).onSnapshot(onVotes,bad));
+  S.unsubs.push(db.doc(`rooms/${code}/meta/pick`).onSnapshot(onPick,bad));
+}
+function mergeLiveMovies(list){
+  if(!Array.isArray(list))return new Map();
+  const map=new Map();
+  for(const raw of list){
+    if(!raw||raw.tmdbId==null)continue;
+    let existing=MOVIES.find(m=>String(m.tmdbId)===String(raw.tmdbId));
+    if(!existing){
+      const id=MOVIES.length;
+      existing={...raw,id,live:true};
+      MOVIES.push(existing);
+    }
+    map.set(String(raw.id),existing.id);
+    map.set(String(raw.tmdbId),existing.id);
+  }
+  return map;
+}
+
+function onRoom(snap){
+  if(!snap.exists)return;
+  const d=snap.data()||{};const genres=d.genres||[];
+  const idMap=mergeLiveMovies(d.movies||[]);
+  S.deck=(d.deck||[]).map(id=>idMap.get(String(id))??id);
+  S.liveMovies=d.movies||[];S.genres=genres;
+  if(S.rev!==undefined&&d.rev!==S.rev&&d.rev!==S.lastRevMine&&S.screen==='swipe'&&genres.length)toast('Genres changed to '+genreList(genres));
+  S.rev=d.rev;
+  if(S.screen==='genres'&&!S.editingGenres&&genres.length)S.screen='swipe';
+  render();
+}
+function onVotes(snap){
+  const prev=curId();
+  snap.docs.forEach(doc=>{
+    const slot=doc.id;if(slot!=='p1'&&slot!=='p2')return;
+    const d=doc.data()||{};const theirs=d.votes||{};
+    S.votes[slot]=slot===S.me?Object.assign({},theirs,S.votes[slot]):Object.assign({},theirs);
+    if(d.name)S.names[slot]=d.name;
+    S.present[slot]=true;
+  });
+  const first=!S.hydrated;S.hydrated=true;
+  const me=S.me,o=other(me);
+  if(!first&&prev!==null&&S.votes[me][prev]===1&&S.votes[o][prev]===0)toast(`${S.names[o]} passed on ${MOVIES[prev].title}`);
+  scanMatches(first);
+  render();
+}
+function onPick(snap){
+  if(!snap.exists)return;
+  const d=snap.data()||{};
+  if(d.ts>S.lastPick&&d.by!==S.me&&d.ts>S.joinedAt-4000&&MOVIES[d.id]){S.lastPick=d.ts;runPick(d.id)}
+}
+async function createRoom(){
+  if(!S.db||S.working)return;
+  const name=(S.form.name||'').trim()||'Player 1';
+  S.working=true;S.error='';render();
+  try{
+    let code,tries=0,free=false;
+    while(tries++<8){code=genCode();const s=await S.db.doc(`rooms/${code}`).get();if(!s.exists){free=true;break}}
+    if(!free)throw {code:'unavailable'};
+    const rev=Date.now();
+    await S.db.doc(`rooms/${code}`).set({genres:[],deck:[],rev,created:rev});
+    await S.db.doc(`rooms/${code}/votes/p1`).set({votes:{},name:name});
+    freshSession('online');S.me='p1';S.room=code;S.names={p1:name,p2:'Player 2'};S.rev=rev;S.lastRevMine=rev;
+    LS.set('tt:room',{code,slot:'p1',name});
+    S.working=false;S.screen='genres';attachRoom();render();
+  }catch(e){dbError(e)}
+}
+async function joinRoom(){
+  if(!S.db||S.working)return;
+  const code=(S.form.code||'').trim().toUpperCase();
+  const name=(S.form.name||'').trim()||'Player 2';
+  if(code.length!==4){S.error='Enter the 4-character room code.';render();return}
+  S.working=true;S.error='';render();
+  try{
+    const room=await S.db.doc(`rooms/${code}`).get();
+    if(!room.exists){S.working=false;S.error='No room with that code. Check it and try again.';render();return}
+    const mine=await S.db.doc(`rooms/${code}/votes/p2`).get();
+    const saved=LS.get('tt:room');
+    const mineOk=saved&&saved.code===code&&saved.slot==='p2';
+    if(mine.exists&&!mineOk){S.working=false;S.error='That room already has two players.';render();return}
+    const votes=mine.exists?((mine.data()||{}).votes||{}):{};
+    await S.db.doc(`rooms/${code}/votes/p2`).set({votes,name});
+    freshSession('online');S.me='p2';S.room=code;S.names={p1:'Player 1',p2:name};S.votes.p2=Object.assign({},votes);
+    LS.set('tt:room',{code,slot:'p2',name});
+    const d=room.data()||{};S.rev=d.rev;
+    S.working=false;S.screen=(d.genres||[]).length?'swipe':'genres';attachRoom();render();
+  }catch(e){dbError(e)}
+}
+async function rejoinRoom(){
+  const saved=LS.get('tt:room');if(!saved||!S.db||S.working)return;
+  S.working=true;S.error='';render();
+  try{
+    const room=await S.db.doc(`rooms/${saved.code}`).get();
+    if(!room.exists){LS.del('tt:room');S.working=false;S.error='That room no longer exists.';render();return}
+    freshSession('online');S.me=saved.slot;S.room=saved.code;
+    S.names[saved.slot]=saved.name||S.names[saved.slot];
+    const d=room.data()||{};S.rev=d.rev;
+    S.working=false;S.screen=(d.genres||[]).length?'swipe':'genres';attachRoom();render();
+  }catch(e){dbError(e)}
+}
+
+/* ---------- pick for us ---------- */
+function startPick(){
+  const ms=orderedMatches();if(!ms.length||(S.overlay&&S.overlay.spinning))return;
+  const final=ms[Math.floor(Math.random()*ms.length)];
+  if(S.mode==='online'){
+    const ts=Date.now(),room=S.room,by=S.me;S.lastPick=ts;
+    enqueue(()=>S.db.doc(`rooms/${room}/meta/pick`).set({id:final,ts,by}));
+  }
+  runPick(final);
+}
+function runPick(final){
+  const ms=orderedMatches();if(!ms.length)ms.push(final);
+  S.overlay={type:'pick',id:final,shown:ms[0],spinning:true,fresh:true};
+  render();
+  const steps=reduced?1:(ms.length>1?14:3);let i=0;
+  const tick=()=>{
+    if(!S.overlay||S.overlay.type!=='pick')return;
+    i++;const last=i>=steps;
+    const id=last?final:ms[Math.floor(Math.random()*ms.length)];
+    S.overlay.shown=id;paintReel(id);
+    if(last){S.overlay.spinning=false;render();confetti()}
+    else setTimeout(tick,55+i*i*1.3);
+  };
+  setTimeout(tick,reduced?10:260);
+}
+function paintReel(id){
+  const m=MOVIES[id];
+  const p=document.querySelector('.pickposter'),t=document.querySelector('.picktitle'),mt=document.querySelector('.pickmeta');
+  if(p)p.innerHTML=poster(m);if(t)t.textContent=m.title;
+  if(mt)mt.textContent=`${m.year}  \u00B7  ${fmtRun(m.runtime)}  \u00B7  \u2605 ${m.rating.toFixed(1)}`;
+}
+
+/* =====================================================================
+   SESSION HELPERS
+   ===================================================================== */
+function freshSession(mode){
+  detach();
+  S.mode=mode;S.votes={p1:{},p2:{}};S.genres=[];S.deck=[];S.sel=new Set();S.livePage=1;S.liveExhausted=false;S.loadingMore=false;
+  S.matchLog=[];S.knownMatches=new Set();S.matchQueue=[];S.liveMovies=[];S.overlay=null;S.handoff=false;S.busy=false;
+  S.editingGenres=false;S.present={};S.room=null;S.rev=undefined;S.lastRevMine=null;S.error='';S._lastCur=undefined;S.leaveArm=false;
+}
+function resetToSetup(){
+  freshSession(null);S.screen='setup';S.names={p1:'Player 1',p2:'Player 2'};render();
+}
+async function startGenres(){
+  const genres=[...S.sel];if(!genres.length||S.working)return;
+  S.genres=genres;S.editingGenres=false;S._lastCur=undefined;S.working=true;S.error='';S.screen='swipe';render();
+  try{
+    const first=await loadLiveRecommendations(genres,{pageStart:1,limit:120,pageCount:5});
+    S.livePage=first.nextPage;S.liveExhausted=!first.hasMore;
+    S.deck=first.ids;
+    if(!S.deck.length)throw new Error('No live movies matched those genres. Try another combination.');
+    S.liveMovies=first.movies;
+    if(first.aiError) console.warn('AI ranking unavailable; using TMDB results:', first.aiError);
+    if(S.mode==='online'){
+      const rev=Date.now();S.rev=rev;S.lastRevMine=rev;
+      const code=S.room,deck=S.deck,movies=S.liveMovies;
+      enqueue(()=>S.db.doc(`rooms/${code}`).set({genres,deck,movies,rev}));
+    }else saveLocal();
+  }catch(e){
+    console.error(e);
+    S.deck=[]; S.liveMovies=[]; S.liveExhausted=false;
+    S.error=`Live movie loading failed: ${e.message||'unknown error'}. Check the server terminal and your API keys.`;
+  }finally{S.working=false;render()}
+}
+function goSwipe(){
+  S.screen=(S.genres.length&&S.deck.length)?'swipe':'genres';
+  if(S.screen==='genres'){S.sel=new Set(S.genres)}
+  render();
+}
+
+/* =====================================================================
+   VIEWS
+   ===================================================================== */
+function header(){
+  const s=S.screen;
+  let h=`<header class="top"><button class="brand" tabindex="-1">${markSVG('')}<span>Two Tickets</span></button>`;
+  if(s==='swipe'){
+    h+=`<div class="gsum">${S.genres.slice(0,3).map(g=>`<span class="chip">${esc(g)}</span>`).join('')}${S.genres.length>3?`<span class="chip">+${S.genres.length-3}</span>`:''}<button class="btn ghost" data-act="change-genres">Change genres</button></div>`;
+  }
+  h+='<div class="grow"></div>';
+  if(s!=='setup'){
+    if(S.mode==='online'){
+      const pr=S.present[other(S.me)];
+      h+=`<button class="pill" data-act="copy-code" title="Copy room code"><span class="dot ${pr?'on':''}"></span>Room <b>${esc(S.room)}</b></button>`;
+    }
+    if(s==='swipe'||s==='genres'){
+      const n=orderedMatches().length;
+      h+=`<button class="btn" data-act="matches">Your Matches ${n?`<span class="badge">${n}</span>`:''}</button>`;
+    }
+    h+=`<button class="btn ghost" data-act="leave">${S.leaveArm?'Click again to confirm':(S.mode==='online'?'Leave room':'Start over')}</button>`;
+  }
+  return h+'</header>';
+}
+
+function viewSetup(){
+  const f=S.form,on=f.tab==='online';
+  const sl=LS.get('tt:local'),sr=LS.get('tt:room');
+  let resume='';
+  if(!on&&sl&&(sl.genres||[]).length){
+    const mc=Object.keys(sl.votes.p1||{}).filter(id=>sl.votes.p1[id]===1&&(sl.votes.p2||{})[id]===1).length;
+    resume=`<div class="resume"><p>Pick up where you left off<small>${esc(sl.names.p1)} and ${esc(sl.names.p2)} \u2013 ${mc} match${mc===1?'':'es'} so far</small></p><div class="acts"><button class="btn primary" data-act="resume-local">Resume</button><button class="btn ghost" data-act="forget-local">Discard</button></div></div>`;
+  }
+  if(on&&sr&&S.db){
+    resume=`<div class="resume"><p>You were in room ${esc(sr.code)}<small>Rejoin as ${esc(sr.name||'your player')}</small></p><div class="acts"><button class="btn primary" data-act="rejoin">Rejoin</button><button class="btn ghost" data-act="forget-room">Dismiss</button></div></div>`;
+  }
+  let body;
+  if(!on){
+    body=`${resume}<p class="lead">Share one screen. You each vote on every movie, taking turns at the keyboard.</p>
+      <div class="field"><i style="background:var(--p1)"></i><input id="n1" maxlength="18" placeholder="Player 1 name" aria-label="Player 1 name" value="${esc(f.n1)}" autocomplete="off"></div>
+      <div class="field"><i style="background:var(--p2)"></i><input id="n2" maxlength="18" placeholder="Player 2 name" aria-label="Player 2 name" value="${esc(f.n2)}" autocomplete="off"></div>
+      <button class="btn primary big wide" data-act="start-local">Choose genres</button>`;
+  }else{
+    const dis=(!S.dbReady||!S.db||S.working)?'disabled':'';
+    let msg='';
+    if(!S.dbReady)msg='<p class="note">Checking whether rooms are available\u2026</p>';
+    else if(!S.db)msg='<p class="note">Rooms need a signed-in viewer with edit access to this page. You can still use Same screen.</p>';
+    body=`${resume}<p class="lead">Each of you uses your own device. One creates a room, the other joins with its code.</p>
+      <div class="field"><i style="background:var(--match)"></i><input id="yname" maxlength="18" placeholder="Your name" aria-label="Your name" value="${esc(f.name)}" autocomplete="off"></div>
+      <button class="btn primary big wide" data-act="create" ${dis}>${S.working?'Working\u2026':'Create a room'}</button>
+      <div class="or">or join your partner</div>
+      <div class="joinrow"><div class="field"><input id="code" class="code" maxlength="4" placeholder="CODE" aria-label="Room code" value="${esc(f.code)}" autocomplete="off" spellcheck="false"></div><button class="btn big" data-act="join" ${dis}>Join</button></div>
+      ${msg}`;
+  }
+  if(S.error)body+=`<p class="err" role="alert">${esc(S.error)}</p>`;
+  return `<main class="setup"><section class="hero">${markSVG('bigmark')}<h1>Find a movie you both say yes to.</h1><p>Pick a few genres, vote on your own, and we\u2019ll flag the moment you both like the same one.</p></section>
+    <section class="panel"><div class="seg" role="tablist"><button role="tab" class="${on?'':'on'}" data-act="tab" data-tab="local" aria-selected="${!on}">Same screen</button><button role="tab" class="${on?'on':''}" data-act="tab" data-tab="online" aria-selected="${on}">Two devices</button></div>${body}</section></main>`;
+}
+
+function genreFooter(){
+  const n=MOVIES.filter(m=>!resolved(m.id)&&m.genres.some(g=>S.sel.has(g))).length;
+  const k=S.sel.size;
+  return `<div class="count">${k?`<b>${k}</b> genre${k===1?'':'s'} \u2013 <b>${n}</b> movies to go through`:'Choose at least one genre'}</div><div class="grow"></div>
+    ${S.editingGenres?'<button class="btn ghost" data-act="back-genres">Back to movie</button>':''}
+    <button class="btn ghost" data-act="all-genres">${k===GENRES.length?'Clear all':'Select all'}</button>
+    <button class="btn primary big" data-act="start-genres" ${n?'':'disabled'}>Start picking</button>`;
+}
+function viewGenres(){
+  let room='';
+  if(S.mode==='online'){
+    const p1=S.present.p1,p2=S.present.p2;
+    room=`<div class="roombar"><div>Share this code with your partner</div><button class="code" data-act="copy-code" title="Copy room code">${esc(S.room)}</button><div class="who"><span class="${p1?'ok':''}" style="--c:var(--p1)"><i></i>${esc(S.names.p1)}${p1?'':' (not here yet)'}</span><span class="${p2?'ok':''}" style="--c:var(--p2)"><i></i>${esc(S.names.p2)}${p2?'':' (not here yet)'}</span></div></div>`;
+  }
+  const tiles=GENRES.map((g,i)=>{
+    const n=MOVIES.filter(m=>m.genres.includes(g)).length,on=S.sel.has(g);
+    return `<button class="gtile ${on?'on':''}" data-act="toggle-genre" data-g="${g}" aria-pressed="${on}">${genreArt(g,i)}<span class="tick" aria-hidden="true">\u2713</span><span class="lbl"><b>${g}</b><small>${n}</small></span></button>`;
+  }).join('');
+  return `<main class="genres">${room}<div class="livebar"><span class="live-dot"></span><span><b>Live AI recommendations</b> — fresh movies are pulled online and ranked for your choices.</span></div><h2>What are you in the mood for?</h2><p class="sub">Pick one or more. You\u2019ll only see movies from these genres.</p><div class="ggrid">${tiles}</div><div class="gfoot" id="gfoot">${genreFooter()}</div></main>`;
+}
+
+function side(slot,id){
+  const online=S.mode==='online';
+  const me=online&&slot===S.me;
+  const act=activeSlot();
+  const isActive=online?me:slot===act;
+  const v=S.votes[slot][id];
+  let status,cls;
+  if(online){
+    if(!me&&!S.present[slot]){status='Hasn\u2019t joined yet';cls='idle'}
+    else if(v!==undefined){status=me?(v?'You liked it':'You passed'):'Voted';cls='done'}
+    else{status=me?'Your turn':'Deciding\u2026';cls='live'}
+  }else{
+    if(v!==undefined){status='Voted';cls='done'}
+    else if(slot===act){status='Voting now';cls='live'}
+    else{status='Up next';cls='idle'}
+  }
+  const liked=Object.values(S.votes[slot]).filter(x=>x===1).length;
+  const keys=(isActive&&v===undefined)?`<div class="keys"><kbd>\u2190</kbd> skip <kbd>\u2192</kbd> like</div>`:'';
+  return `<aside class="side ${slot} ${isActive?'active':''}"><div class="avatar">${initial(S.names[slot])}</div><div class="nm">${esc(S.names[slot])}${me?'<span class="you">You</span>':''}</div><div class="status ${cls}"><i></i>${status}</div><div class="liked"><b>${liked}</b>liked so far</div>${keys}</aside>`;
+}
+
+function viewSwipe(){
+  if(S.working){return `<main class="stage"><div></div><section class="center"><div class="live-loading"><div><div class="spin"></div><h2>Finding fresh movies for both of you…</h2><p class="desc">Checking current movie data and asking AI to rank the best matches.</p></div></div></section><div></div></main>`}
+  const id=curId();
+  if(id===null){
+    const n=orderedMatches().length;
+    // When the current deck is exhausted, actively start the next live batch.
+    // The previous version could render the loading state without triggering the request.
+    if(!S.loadingMore && !S.liveExhausted && S.genres.length && !S.working){
+      setTimeout(()=>loadMoreLiveMovies(true),0);
+      return `<main class="stage"><div></div><section class="center"><div class="done"><div class="spin"></div><h2>Finding more movies…</h2><p>Loading the next live batch for you.</p></div></section><div></div></main>`;
+    }
+    if(S.loadingMore){return `<main class="stage"><div></div><section class="center"><div class="done"><div class="spin"></div><h2>Finding more movies…</h2><p>Loading the next live batch for you.</p></div></section><div></div></main>`}
+    return `<main class="stage" style="--turn:var(--${S.mode==='online'?S.me:'p1'})"><div class="side p1" style="visibility:hidden"></div><section class="center"><div class="done"><h2>${S.liveExhausted?'That’s every movie in these genres.':'Couldn’t load the next batch.'}</h2><p>${S.liveExhausted?(n?`You found ${n} match${n===1?'':'es'}.`:'No matches yet – try a different mix of genres.'):(S.error||'Check the server terminal for the live API error.')}</p><div class="row"><button class="btn primary big" data-act="change-genres">Change genres</button>${n?'<button class="btn big" data-act="matches">See your matches</button>':''}</div></div></section><div class="side p2" style="visibility:hidden"></div></main>`;
+  }
+  const m=MOVIES[id];
+  const isNew=id!==S._lastCur;const wasNull=S._lastCur===undefined;S._lastCur=id;
+  const slot=activeSlot();
+  const online=S.mode==='online';
+  const iVoted=online&&S.votes[S.me][id]!==undefined;
+  const left=S.deck.filter(i=>!resolved(i)).length;
+  const cardCls=isNew?(wasNull||reduced?'enter':'enter'):'';
+  const waiting=iVoted?`<p class="waiting">Waiting for ${esc(S.names[other(S.me)])}</p>`:'';
+  const dis=(iVoted||S.handoff)?'disabled':'';
+  let cover='';
+  if(S.handoff){
+    cover=`<div class="cover" data-act="handoff-ok"><div><div class="avatar">${initial(S.names.p2)}</div><h2>Pass to ${esc(S.names.p2)}</h2><p>${esc(S.names.p1)} has voted. Press any key when you\u2019re ready.</p><button class="btn primary big" data-act="handoff-ok">I\u2019m ready</button></div></div>`;
+  }
+  return `<main class="stage" style="--turn:var(--${slot})">${side('p1',id)}<section class="center"><div class="playarea">
+    <div class="cardwrap"><article class="card ${cardCls}" aria-label="${esc(m.title)}">
+      <div class="poster">${poster(m)}</div>
+      <div class="info">
+        <div class="cg">${m.genres.map(g=>`<span class="chip">${esc(g)}</span>`).join('')}</div>
+        <h1 class="title ${m.title.length>30?'long':''}">${esc(m.title)}</h1>
+        <div class="facts"><span class="fact">${m.year}</span><span class="fact">${fmtRun(m.runtime)}</span><span class="fact rate">\u2605 ${m.rating.toFixed(1)}<small>/10</small></span></div>
+        <p class="desc">${esc(m.desc)}</p>${m.aiReason?`<div class="ai-reason"><span class="ai-note">✦ AI pick</span><br>${esc(m.aiReason)}</div>`:''}
+      </div></article></div>
+    ${waiting}
+    <div class="controls">
+      <button class="vote skip" data-act="skip" ${dis}><span class="big"><span>\uD83D\uDC4E</span>Skip</span><span class="sub">Don\u2019t want to watch it</span><kbd>\u2190 Left</kbd></button>
+      <button class="vote like" data-act="like" ${dis}><span class="big"><span>\u2764\uFE0F</span>Like</span><span class="sub">Want to watch it</span><kbd>Right \u2192</kbd></button>
+    </div>
+    <p class="left">${left} movie${left===1?'':'s'} left in ${esc(genreList(S.genres))}${S.loadingMore?' · loading more…':''}</p>
+    ${cover}
+  </div></section>${side('p2',id)}</main>`;
+}
+
+function viewMatches(){
+  const ms=orderedMatches();
+  const grid=ms.map(id=>{const m=MOVIES[id];return `<article class="mcard"><div class="mp">${poster(m)}</div><h3>${esc(m.title)}</h3><div class="mm"><span>${m.year}</span><span>${fmtRun(m.runtime)}</span><span class="r">\u2605 ${m.rating.toFixed(1)}</span></div></article>`}).join('');
+  return `<main class="matches"><div class="mhead"><div><h2>Your Matches</h2><p>${ms.length?`${ms.length} movie${ms.length===1?'':'s'} you both want to watch.`:'Nothing here yet.'}</p></div>
+    <div class="acts"><button class="btn big" data-act="try-another">Try Another Movie</button><button class="btn primary big" data-act="pick" ${ms.length?'':'disabled'}>\uD83C\uDFB2 Pick For Us</button></div></div>
+    ${ms.length?`<div class="mgrid">${grid}</div>`:`<div class="empty"><h3>No matches yet</h3><p>A match appears the moment you both like the same movie.</p><button class="btn primary big" data-act="try-another">Try Another Movie</button></div>`}</main>`;
+}
+
+function overlays(){
+  const o=S.overlay;if(!o)return '';
+  const anim=o.fresh?'anim':'';o.fresh=false;
+  if(o.type==='match'){
+    const m=MOVIES[o.id],n=orderedMatches().length;
+    return `<div class="overlay match ${anim}" role="dialog" aria-modal="true" aria-label="Match"><div class="obox"><h1>\uD83C\uDF89 Match!</h1><div class="opos">${poster(m)}</div><h2>${esc(m.title)}</h2><p class="meta">${m.year}  \u00B7  ${fmtRun(m.runtime)}  \u00B7  \u2605 ${m.rating.toFixed(1)}</p><p class="say">You both want to watch this one.</p><div class="row"><button class="btn primary big" data-act="close-overlay" data-autofocus>Try Another Movie</button><button class="btn big" data-act="matches-from-overlay">Your Matches <span class="badge">${n}</span></button></div></div></div>`;
+  }
+  if(o.type==='pick'){
+    const m=MOVIES[o.spinning?o.shown:o.id];const n=orderedMatches().length;
+    return `<div class="overlay ${anim}" role="dialog" aria-modal="true" aria-label="Pick for us"><div class="obox pickbox"><span class="tag">${o.spinning?`Choosing from ${n} match${n===1?'':'es'}\u2026`:'Tonight\u2019s pick'}</span><div class="opos pickposter">${poster(m)}</div><h2 class="picktitle">${esc(m.title)}</h2><p class="meta pickmeta">${m.year}  \u00B7  ${fmtRun(m.runtime)}  \u00B7  \u2605 ${m.rating.toFixed(1)}</p><p class="say">${o.spinning?'\u00A0':'Settled. Enjoy the movie.'}</p><div class="row"><button class="btn big" data-act="pick-again" ${o.spinning?'disabled':''}>Pick again</button><button class="btn primary big" data-act="close-overlay" data-autofocus ${o.spinning?'disabled':''}>Close</button></div></div></div>`;
+  }
+  return '';
+}
+
+/* =====================================================================
+   RENDER
+   ===================================================================== */
+function render(){
+  const ae=document.activeElement;
+  const keep=(ae&&ae.id&&$app.contains(ae))?{id:ae.id,s:ae.selectionStart,e:ae.selectionEnd}:null;
+  const sc=S.screen;
+  const body=sc==='setup'?viewSetup():sc==='genres'?viewGenres():sc==='matches'?viewMatches():viewSwipe();
+  if(sc!=='swipe')S._lastCur=undefined;
+  $app.innerHTML=header()+body+overlays();
+  if(keep){const el=document.getElementById(keep.id);if(el){el.focus();try{el.setSelectionRange(keep.s,keep.e)}catch(_){}}}
+  const af=$app.querySelector('[data-autofocus]:not([disabled])');if(af)af.focus({preventScroll:true});
+}
+
+/* =====================================================================
+   EVENTS
+   ===================================================================== */
+const H={
+  tab(t){S.form.tab=t.dataset.tab;S.error='';render()},
+  'start-local'(){
+    const f=S.form;
+    freshSession('local');
+    S.names={p1:(f.n1||'').trim()||'Player 1',p2:(f.n2||'').trim()||'Player 2'};
+    S.screen='genres';saveLocal();render();
+  },
+  'resume-local'(){
+    const sl=LS.get('tt:local');if(!sl)return;
+    freshSession('local');
+    S.names=sl.names;S.genres=sl.genres||[];const lm=mergeLiveMovies(sl.liveMovies||[]);S.liveMovies=sl.liveMovies||[];S.deck=(sl.deck||[]).map(id=>lm.get(String(id))??id);S.votes={p1:sl.votes.p1||{},p2:sl.votes.p2||{}};S.matchLog=sl.matchLog||[];
+    S.sel=new Set(S.genres);
+    matchIds().forEach(id=>S.knownMatches.add(id));
+    const c=curId();
+    S.handoff=c!==null&&S.votes.p1[c]===1&&S.votes.p2[c]===undefined;
+    S.screen=S.genres.length?'swipe':'genres';render();
+  },
+  'forget-local'(){LS.del('tt:local');render()},
+  'forget-room'(){LS.del('tt:room');render()},
+  create(){createRoom()},join(){joinRoom()},rejoin(){rejoinRoom()},
+  'toggle-genre'(t){
+    const g=t.dataset.g;if(S.sel.has(g))S.sel.delete(g);else S.sel.add(g);
+    t.classList.toggle('on',S.sel.has(g));t.setAttribute('aria-pressed',S.sel.has(g));
+    document.getElementById('gfoot').innerHTML=genreFooter();
+  },
+  'all-genres'(){if(S.sel.size===GENRES.length)S.sel=new Set();else S.sel=new Set(GENRES);render()},
+  'start-genres'(){startGenres()},
+  'back-genres'(){S.editingGenres=false;S.screen='swipe';render()},
+  'change-genres'(){S.sel=new Set(S.genres);S.editingGenres=true;S.screen='genres';render()},
+  matches(){S.screen='matches';render()},
+  'matches-from-overlay'(){S.overlay=null;S.matchQueue=[];S.screen='matches';render()},
+  'try-another'(){goSwipe()},
+  skip(){vote(0)},like(){vote(1)},
+  'handoff-ok'(){S.handoff=false;render()},
+  'close-overlay'(){if(S.overlay&&S.overlay.spinning)return;closeOverlay()},
+  pick(){startPick()},'pick-again'(){startPick()},
+  'copy-code'(){
+    try{navigator.clipboard.writeText(S.room).then(()=>toast('Room code copied'),()=>toast('Room code: '+S.room))}catch(e){toast('Room code: '+S.room)}
+  },
+  leave(){
+    if(!S.leaveArm){S.leaveArm=true;render();clearTimeout(H._lt);H._lt=setTimeout(()=>{S.leaveArm=false;render()},3000);return}
+    clearTimeout(H._lt);
+    if(S.mode==='online')LS.del('tt:room');else LS.del('tt:local');
+    resetToSetup();
+  }
+};
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-act]');if(!t)return;
+  if(t.dataset.act==='handoff-ok'&&e.target.closest('button')&&t.classList.contains('cover')){/* button handles it */}
+  const fn=H[t.dataset.act];if(fn)fn(t,e);
+});
+document.addEventListener('input',e=>{
+  const id=e.target.id,v=e.target.value;
+  if(id==='n1')S.form.n1=v;else if(id==='n2')S.form.n2=v;else if(id==='yname')S.form.name=v;
+  else if(id==='code'){S.form.code=v.toUpperCase().replace(/[^A-Z0-9]/g,'')}
+});
+document.addEventListener('keydown',e=>{
+  if(e.repeat||e.metaKey||e.ctrlKey||e.altKey)return;
+  const tag=document.activeElement&&document.activeElement.tagName;
+  const typing=tag==='INPUT'||tag==='TEXTAREA';
+  if(S.overlay){
+    if(e.key==='Escape'||e.key==='Enter'||e.key===' '){
+      if(S.overlay.spinning)return;
+      e.preventDefault();closeOverlay();
+    }
+    return;
+  }
+  if(typing){
+    if(e.key==='Enter'&&S.screen==='setup'){
+      e.preventDefault();
+      if(S.form.tab==='local')H['start-local']();
+      else if(document.activeElement.id==='code')joinRoom();
+      else createRoom();
+    }
+    return;
+  }
+  if(S.handoff&&S.screen==='swipe'){
+    if(['Shift','Control','Alt','Meta','Tab','CapsLock'].includes(e.key))return;
+    e.preventDefault();S.handoff=false;render();return;
+  }
+  if(S.screen==='swipe'){
+    if(e.key==='ArrowLeft'){e.preventDefault();vote(0)}
+    else if(e.key==='ArrowRight'){e.preventDefault();vote(1)}
+  }else if(S.screen==='matches'&&e.key==='Escape'){goSwipe()}
+});
+
+/* ---------- boot ---------- */
+render();
+(async()=>{
+  try{if(window.claude&&typeof claude.use==='function')S.db=await claude.use('db')}catch(e){S.db=null}
+  S.dbReady=true;
+  if(S.screen==='setup')render();
+})();
+</script>
+</body>
+</html>
